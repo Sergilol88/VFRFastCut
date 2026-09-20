@@ -75,10 +75,18 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "Concat part 2 creation failed." }
 
     $concatFile = Join-Path $TempRoot "concat.txt"
-    @(
+    $concatLines = @(
         "file '$($part1.Replace("'", "'\''"))'",
         "file '$($part2.Replace("'", "'\''"))'"
-    ) | Set-Content -Encoding UTF8 $concatFile
+    )
+    # Windows PowerShell 5.1 writes a BOM for -Encoding UTF8. FFmpeg's concat
+    # demuxer treats that BOM as part of the first keyword ("file") and fails.
+    # Write explicit UTF-8 without BOM so the test behaves like the Python app.
+    [IO.File]::WriteAllText(
+        $concatFile,
+        ($concatLines -join [Environment]::NewLine),
+        (New-Object Text.UTF8Encoding($false))
+    )
 
     $joined = Join-Path $TempRoot "joined.mkv"
     & $Ffmpeg -hide_banner -loglevel error -y -f concat -safe 0 -i $concatFile -map 0:v:0 -map '0:a?' -c copy $joined
