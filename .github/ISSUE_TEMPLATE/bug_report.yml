@@ -1,0 +1,56 @@
+name: Bug report
+description: Report a reproducible problem in VFR FastCut
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: VFR FastCut version
+      placeholder: "0.2.33"
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version
+      placeholder: "Windows 11 24H2"
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Preview / playback
+        - Timeline / editing
+        - Export
+        - UI / localization
+        - Startup / packaging
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: media
+    attributes:
+      label: Source media
+      description: Container, codec, approximate duration and whether it is a VFR/Twitch VOD, if known.
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Please list the smallest reliable sequence that reproduces the issue.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true

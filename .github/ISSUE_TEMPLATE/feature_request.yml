@@ -1,0 +1,27 @@
+name: Feature request
+description: Suggest an improvement for VFR FastCut
+title: "[Feature] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+    validations:
+      required: true
+  - type: dropdown
+    id: encode
+    attributes:
+      label: Does this feature require video re-encoding?
+      options:
+        - No / should remain lossless
+        - Yes / probably belongs to 0.3.x
+        - Not sure
+    validations:
+      required: true

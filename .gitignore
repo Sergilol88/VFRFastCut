@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.venv/
+venv/
+
+# PyInstaller
+build/
+dist/
+*.spec
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Local media / exports
+*.mp4
+*.mkv
+*.mov
+*.m4v
+*.webm
+*.ts
+*.mka
+
+# Local FFmpeg bundle is intentionally not committed
+ffmpeg/
