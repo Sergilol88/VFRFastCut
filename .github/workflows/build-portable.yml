@@ -8,7 +8,17 @@ on:
     tags:
       - 'v*'
     paths:
-      - .github/workflows/build-portable.yml
+      - '.github/workflows/build-portable.yml'
+      - 'vfr_fastcut.py'
+      - 'requirements.txt'
+      - 'VFRFastCut.ico'
+      - 'LICENSE'
+      - 'LICENSES/**'
+      - 'THIRD_PARTY_NOTICES.md'
+      - 'THIRD_PARTY_VERSIONS.md'
+      - 'README.md'
+      - 'README_RU.md'
+      - 'tools/ffmpeg-minimal/**'
 
 permissions:
   contents: read
@@ -16,14 +26,18 @@ permissions:
 jobs:
   build:
     runs-on: windows-latest
+    timeout-minutes: 30
 
     env:
-      APP_VERSION: "0.2.33"
       FFMPEG_VERSION: "9.0.2"
-      FFMPEG_SHA256: "60f467265b1e312373dbcd92200c2618a74850f98d3d078e94296bb3fa2047ba"
-      FFMPEG_URL: "https://www.gyan.dev/ffmpeg/builds/packages/ffmpeg-9.0.2-essentials_build.zip"
+      FFMPEG_SOURCE_SHA256: "8c3850283eb25fa026482078a04051e0be17347b09ef81a0849bec15a96e002e"
+      PYINSTALLER_VERSION: "6.22.3"
 
     steps:
+      - name: Preserve LF line endings
+        shell: pwsh
+        run: git config --global core.autocrlf input
+
       - name: Checkout source
         uses: actions/checkout@v4
 
@@ -33,66 +47,82 @@ jobs:
           python-version: '3.12'
           cache: 'pip'
 
-      - name: Install build dependencies
+      - name: Install Python build dependencies
         shell: pwsh
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
-          python -m pip install pyinstaller
+          python -m pip install "pyinstaller==$env:PYINSTALLER_VERSION"
           python -m py_compile vfr_fastcut.py
 
-      - name: Download and verify FFmpeg
+      - name: Read application version
+        id: app
         shell: pwsh
         run: |
-          Invoke-WebRequest -Uri $env:FFMPEG_URL -OutFile ffmpeg.zip
-          $hash = (Get-FileHash ffmpeg.zip -Algorithm SHA256).Hash.ToLowerInvariant()
-          if ($hash -ne $env:FFMPEG_SHA256) {
-            throw "FFmpeg SHA-256 mismatch. Expected $env:FFMPEG_SHA256, got $hash"
+          $version = python -c "import vfr_fastcut; print(vfr_fastcut.APP_VERSION)"
+          if (-not $version) {
+            throw "Could not read APP_VERSION from vfr_fastcut.py"
           }
 
-          Expand-Archive ffmpeg.zip -DestinationPath ffmpeg-download
-          $ffmpeg = Get-ChildItem ffmpeg-download -Recurse -Filter ffmpeg.exe | Select-Object -First 1
-          $ffprobe = Get-ChildItem ffmpeg-download -Recurse -Filter ffprobe.exe | Select-Object -First 1
-          if (-not $ffmpeg -or -not $ffprobe) {
-            throw "ffmpeg.exe or ffprobe.exe was not found in the verified archive."
+          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "APP_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+          if ($env:GITHUB_REF_TYPE -eq "tag") {
+            $expectedTag = "v$version"
+            if ($env:GITHUB_REF_NAME -ne $expectedTag) {
+              throw "Tag/version mismatch. Tag is $env:GITHUB_REF_NAME but APP_VERSION is $version."
+            }
           }
 
-          New-Item -ItemType Directory -Force -Path ffmpeg\bin | Out-Null
-          Copy-Item $ffmpeg.FullName ffmpeg\bin\ffmpeg.exe
-          Copy-Item $ffprobe.FullName ffmpeg\bin\ffprobe.exe
+          Write-Host "Application version: $version"
 
-          $gyanReadme = Get-ChildItem ffmpeg-download -Recurse -Filter README.txt | Select-Object -First 1
-          if ($gyanReadme) {
-            Copy-Item $gyanReadme.FullName LICENSES\FFmpeg-Gyan-README.txt
-          }
+      - name: Restore minimal FFmpeg cache
+        id: ffmpeg-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            tools/ffmpeg-minimal/runtime
+            tools/ffmpeg-minimal/ffmpeg-9.0.2-source.tar.xz
+          key: ffmpeg-minimal-${{ runner.os }}-${{ hashFiles('tools/ffmpeg-minimal/build-msys2-ucrt64.sh') }}
 
-          & .\ffmpeg\bin\ffmpeg.exe -version | Select-Object -First 1
-          & .\ffmpeg\bin\ffprobe.exe -version | Select-Object -First 1
+      - name: Set up MSYS2 UCRT64
+        if: steps.ffmpeg-cache.outputs.cache-hit != 'true'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            base-devel
+            curl
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-pkgconf
+            mingw-w64-ucrt-x86_64-nasm
 
-      - name: Write build information
+      - name: Build minimal FFmpeg runtime
+        if: steps.ffmpeg-cache.outputs.cache-hit != 'true'
+        shell: msys2 {0}
+        run: |
+          bash tools/ffmpeg-minimal/build-msys2-ucrt64.sh
+
+      - name: Verify FFmpeg source and runtime
         shell: pwsh
         run: |
-          $pyside = python -c "import PySide6; print(PySide6.__version__)"
-          $pyinstaller = python -m PyInstaller --version
-          $python = python --version
-          @"
-          VFR FastCut portable build
-          ===========================
-          Application version: $env:APP_VERSION
-          Git commit: $env:GITHUB_SHA
-          Build platform: GitHub Actions windows-latest / x64
-          $python
-          PySide6: $pyside
-          PyInstaller: $pyinstaller
+          $sourceArchive = ".\tools\ffmpeg-minimal\ffmpeg-$env:FFMPEG_VERSION-source.tar.xz"
+          if (-not (Test-Path $sourceArchive)) {
+            throw "Missing FFmpeg source archive: $sourceArchive"
+          }
 
-          FFmpeg package: Gyan.dev release essentials
-          FFmpeg version: $env:FFMPEG_VERSION
-          Package URL: $env:FFMPEG_URL
-          Package SHA-256: $env:FFMPEG_SHA256
-          FFmpeg source commit: 946fcce07b
-          Source: https://github.com/FFmpeg/FFmpeg/commit/946fcce07b
-          License: GPLv3 (see LICENSES/GPL-3.0.txt and THIRD_PARTY_NOTICES.md)
-          "@ | Set-Content -Encoding UTF8 BUILD_INFO.txt
+          $sourceHash = (Get-FileHash $sourceArchive -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($sourceHash -ne $env:FFMPEG_SOURCE_SHA256) {
+            throw "FFmpeg source SHA-256 mismatch. Expected $env:FFMPEG_SOURCE_SHA256, got $sourceHash"
+          }
+
+          $buildInfo = Get-Content .\tools\ffmpeg-minimal\runtime\BUILD_INFO.txt -Raw
+          if ($buildInfo -notmatch [regex]::Escape($env:FFMPEG_SOURCE_SHA256)) {
+            throw "BUILD_INFO.txt does not contain the expected FFmpeg source SHA-256."
+          }
+
+          .\tools\ffmpeg-minimal\verify.ps1
 
       - name: Build portable application
         shell: pwsh
@@ -108,53 +138,81 @@ jobs:
             --add-data "VFRFastCut.ico;." `
             --add-data "LICENSE;." `
             --add-data "THIRD_PARTY_NOTICES.md;." `
+            --add-data "THIRD_PARTY_VERSIONS.md;." `
             --add-data "README.md;." `
             --add-data "README_RU.md;." `
-            --add-data "BUILD_INFO.txt;." `
             --add-data "LICENSES;LICENSES" `
-            --add-binary "ffmpeg\bin\ffmpeg.exe;ffmpeg\bin" `
-            --add-binary "ffmpeg\bin\ffprobe.exe;ffmpeg\bin" `
             vfr_fastcut.py
+
+          New-Item -ItemType Directory -Force .\dist\VFRFastCut\ffmpeg\bin | Out-Null
+          Copy-Item .\tools\ffmpeg-minimal\runtime\* .\dist\VFRFastCut\ffmpeg\bin\ -Force
 
       - name: Verify portable contents
         shell: pwsh
         run: |
           $required = @(
             "dist\VFRFastCut\VFRFastCut.exe",
-            "dist\VFRFastCut\ffmpeg\bin\ffmpeg.exe",
-            "dist\VFRFastCut\ffmpeg\bin\ffprobe.exe",
             "dist\VFRFastCut\LICENSE",
             "dist\VFRFastCut\THIRD_PARTY_NOTICES.md",
+            "dist\VFRFastCut\THIRD_PARTY_VERSIONS.md",
             "dist\VFRFastCut\README.md",
             "dist\VFRFastCut\README_RU.md",
-            "dist\VFRFastCut\BUILD_INFO.txt",
-            "dist\VFRFastCut\LICENSES\GPL-3.0.txt",
-            "dist\VFRFastCut\LICENSES\LGPL-3.0.txt"
+            "dist\VFRFastCut\LICENSES\LGPL-3.0.txt",
+            "dist\VFRFastCut\LICENSES\LGPL-2.1.txt",
+            "dist\VFRFastCut\LICENSES\MinGW-w64-libwinpthread-COPYING.txt",
+            "dist\VFRFastCut\LICENSES\GCC-COPYING.LIB.txt",
+            "dist\VFRFastCut\LICENSES\GCC-COPYING.RUNTIME.txt",
+            "dist\VFRFastCut\LICENSES\GCC-COPYING3.txt",
+            "dist\VFRFastCut\LICENSES\GCC-runtime-README.txt",
+            "dist\VFRFastCut\ffmpeg\bin\ffmpeg.exe",
+            "dist\VFRFastCut\ffmpeg\bin\ffprobe.exe",
+            "dist\VFRFastCut\ffmpeg\bin\BUILD_INFO.txt",
+            "dist\VFRFastCut\ffmpeg\bin\COPYING.LGPLv2.1",
+            "dist\VFRFastCut\ffmpeg\bin\libgcc_s_seh-1.dll",
+            "dist\VFRFastCut\ffmpeg\bin\libwinpthread-1.dll"
           )
+
           foreach ($path in $required) {
-            if (-not (Test-Path $path)) { throw "Missing portable file: $path" }
+            if (-not (Test-Path $path)) {
+              throw "Missing portable file: $path"
+            }
           }
 
-          & dist\VFRFastCut\ffmpeg\bin\ffmpeg.exe -version | Select-Object -First 1
-          & dist\VFRFastCut\ffmpeg\bin\ffprobe.exe -version | Select-Object -First 1
+          $versionText = & .\dist\VFRFastCut\ffmpeg\bin\ffmpeg.exe -version 2>&1 | Out-String
+          if ($versionText -notmatch "ffmpeg version $([regex]::Escape($env:FFMPEG_VERSION))") {
+            throw "Packaged FFmpeg version does not match $env:FFMPEG_VERSION."
+          }
 
-      - name: Create release ZIP
+          & .\dist\VFRFastCut\ffmpeg\bin\ffprobe.exe -version | Select-Object -First 1
+          Write-Host "Portable contents: OK"
+
+      - name: Create portable ZIP and checksum
         shell: pwsh
         run: |
           $zip = "VFRFastCut-v$env:APP_VERSION-Windows-x64.zip"
-          Compress-Archive -Path dist\VFRFastCut\* -DestinationPath $zip -CompressionLevel Optimal
+
+          Remove-Item $zip -Force -ErrorAction SilentlyContinue
+          Remove-Item "$zip.sha256" -Force -ErrorAction SilentlyContinue
+
+          tar.exe -a -c -f $zip -C dist VFRFastCut
+          if ($LASTEXITCODE -ne 0) {
+            throw "Failed to create portable ZIP."
+          }
+
           $hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant()
-          "$hash  $zip" | Set-Content -Encoding ASCII "$zip.sha256"
+          "$hash  $zip" | Set-Content "$zip.sha256" -Encoding ascii
+
           Write-Host "Portable ZIP: $zip"
           Write-Host "SHA-256: $hash"
 
-      - name: Upload portable artifact
+      - name: Upload portable CI artifact
         uses: actions/upload-artifact@v4
         with:
-          name: VFRFastCut-v0.2.33-Windows-x64
+          name: VFRFastCut-v${{ steps.app.outputs.version }}-Windows-x64
           path: |
-            VFRFastCut-v0.2.33-Windows-x64.zip
-            VFRFastCut-v0.2.33-Windows-x64.zip.sha256
+            VFRFastCut-v${{ steps.app.outputs.version }}-Windows-x64.zip
+            VFRFastCut-v${{ steps.app.outputs.version }}-Windows-x64.zip.sha256
+            tools/ffmpeg-minimal/ffmpeg-9.0.2-source.tar.xz
           if-no-files-found: error
           compression-level: 0
           retention-days: 30
