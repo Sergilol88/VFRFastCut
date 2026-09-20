@@ -19,10 +19,17 @@ if ($versionText -match '--enable-nonfree') { throw "Nonfree was enabled unexpec
 if ($versionText -notmatch '--disable-gpl') { throw "Expected --disable-gpl in build configuration." }
 if ($versionText -notmatch '--disable-nonfree') { throw "Expected --disable-nonfree in build configuration." }
 
-$formats = & $Ffmpeg -hide_banner -formats 2>&1 | Out-String
-foreach ($required in @('mov,mp4,m4a,3gp,3g2,mj2', 'matroska,webm', 'mpegts', 'm4v', 'concat')) {
-    if ($formats -notmatch [regex]::Escape($required)) {
-        Write-Warning "Could not confirm format token: $required"
+$demuxers = & $Ffmpeg -hide_banner -demuxers 2>&1 | Out-String
+foreach ($required in @('mov', 'matroska', 'mpegts', 'm4v', 'avi', 'flv', 'mpeg', 'asf', 'concat')) {
+    if ($demuxers -notmatch "(?m)^\s*D\s+[^\r\n]*\b$([regex]::Escape($required))\b") {
+        throw "Required demuxer missing: $required"
+    }
+}
+
+$muxers = & $Ffmpeg -hide_banner -muxers 2>&1 | Out-String
+foreach ($required in @('mp4', 'mov', 'matroska')) {
+    if ($muxers -notmatch "(?m)^\s*E\s+[^\r\n]*\b$([regex]::Escape($required))\b") {
+        throw "Required muxer missing: $required"
     }
 }
 
@@ -34,6 +41,7 @@ foreach ($required in @('file', 'pipe')) {
 }
 
 Write-Host "License/configuration checks: OK"
+Write-Host "Required demuxers/muxers: OK"
 Write-Host "Required local protocols: OK"
 
 if (-not $InputFile) {
@@ -52,8 +60,8 @@ try {
     if (-not $probePackets.Trim()) { throw "FFprobe packet/keyframe scan produced no output." }
     Write-Host "FFprobe packet scan: OK"
 
-    $av = Join-Path $TempRoot "av.mkv"
-    & $Ffmpeg -hide_banner -loglevel error -y -ss 1 -i $InputFile -t 3 -map 0:v:0 -map '0:a?' -map_metadata 0 -c copy $av
+    $av = Join-Path $TempRoot "av.mp4"
+    & $Ffmpeg -hide_banner -loglevel error -y -ss 1 -i $InputFile -t 3 -map 0:v:0 -map '0:a?' -map_metadata 0 -c copy -f mp4 $av
     if ($LASTEXITCODE -ne 0 -or -not (Test-Path $av)) { throw "Video+audio stream copy failed." }
     Write-Host "Video + audio stream copy: OK"
 

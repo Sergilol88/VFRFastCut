@@ -28,3 +28,13 @@ Thumbs.db
 
 # Local FFmpeg bundle is intentionally not committed
 ffmpeg/
+
+# Generated minimal FFmpeg build products
+tools/ffmpeg-minimal/work/
+tools/ffmpeg-minimal/out/
+tools/ffmpeg-minimal/runtime/
+tools/ffmpeg-minimal/ffmpeg-*-source.tar.xz
+
+# Local release artifacts
+VFRFastCut-v*-Windows-x64.zip
+VFRFastCut-v*-Windows-x64.zip.sha256

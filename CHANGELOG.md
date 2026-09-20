@@ -2,6 +2,15 @@
 
 All notable changes to VFR FastCut are documented here.
 
+## 0.2.34
+
+- Expanded supported input containers to MP4, MOV, M4V, MKV, WebM, TS/MTS/M2TS, AVI, FLV, MPG/MPEG and WMV.
+- Added safe output defaults: MP4/MOV/MKV sources keep their container; other supported inputs default to MKV.
+- Video export is limited to MP4, MOV and MKV; audio-only export remains MKA.
+- Added explicit output muxer selection for the minimal FFmpeg runtime.
+- Added dedicated MP4 muxer support plus AVI, FLV, MPEG program stream and ASF/WMV demuxers to the custom FFmpeg build.
+- Updated built-in help and public documentation with supported input/output formats and stream-copy compatibility notes.
+
 ## 0.2.33
 
 ### Public-ready

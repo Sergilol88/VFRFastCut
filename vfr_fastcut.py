@@ -42,15 +42,28 @@ from PySide6.QtWidgets import (
 )
 
 APP_NAME = "VFR FastCut"
-APP_VERSION = "0.2.33"
+APP_VERSION = "0.2.34"
 
 SUPPORTED_VIDEO_SUFFIXES = frozenset({
     ".mp4",
-    ".mkv",
     ".mov",
-    ".ts",
-    ".webm",
     ".m4v",
+    ".mkv",
+    ".webm",
+    ".ts",
+    ".mts",
+    ".m2ts",
+    ".avi",
+    ".flv",
+    ".mpg",
+    ".mpeg",
+    ".wmv",
+})
+
+VIDEO_OUTPUT_SUFFIXES = frozenset({
+    ".mp4",
+    ".mov",
+    ".mkv",
 })
 
 # Short enough to make keyboard seeking feel responsive, while still giving
@@ -170,10 +183,10 @@ UI_TEXT = {
         "project_reset": "Project reset.",
         "cannot_reset_export": "The project cannot be reset while export is running.",
         "open_dialog": "Open video",
-        "video_filter": "Video (*.mp4 *.mkv *.mov *.ts *.webm *.m4v);;All files (*.*)",
+        "video_filter": "Video (*.mp4 *.mov *.m4v *.mkv *.webm *.ts *.mts *.m2ts *.avi *.flv *.mpg *.mpeg *.wmv);;All files (*.*)",
         "wait_export": "Wait for the export to finish or cancel it.",
         "file_not_found": "File not found.",
-        "unsupported_type": "This file type is not supported yet.\n\nSupported: MP4, MKV, MOV, TS, WebM, M4V.",
+        "unsupported_type": "This file type is not supported yet.\n\nSupported: MP4, MOV, M4V, MKV, WebM, TS, MTS, M2TS, AVI, FLV, MPG/MPEG, WMV.",
         "already_open": "This file is already open: {name}",
         "opened": "Opened: {name}",
         "previous_cut_status": "Previous cut: {time}",
@@ -191,7 +204,7 @@ UI_TEXT = {
         "tools_missing_ffmpeg": "ffmpeg.exe",
         "tools_missing": "Could not find {missing}.\n\nPlace the files in:\n  ffmpeg\\bin\\ next to the app\nor use C:\\ffmpeg\\bin\\.",
         "cannot_overwrite_source": "The source file cannot be overwritten.",
-        "file_filter_av": "MP4 (*.mp4);;MKV (*.mkv);;All files (*.*)",
+        "file_filter_av": "MP4 (*.mp4);;MOV (*.mov);;MKV (*.mkv);;All files (*.*)",
         "export_selected_dialog": "Export selected segment",
         "stopping_export": "Stopping export…",
         "export_finished_status": "Lossless export finished.",
@@ -256,10 +269,10 @@ UI_TEXT = {
         "project_reset": "Проект сброшен.",
         "cannot_reset_export": "Нельзя сбросить проект во время экспорта.",
         "open_dialog": "Открыть видео",
-        "video_filter": "Видео (*.mp4 *.mkv *.mov *.ts *.webm *.m4v);;Все файлы (*.*)",
+        "video_filter": "Видео (*.mp4 *.mov *.m4v *.mkv *.webm *.ts *.mts *.m2ts *.avi *.flv *.mpg *.mpeg *.wmv);;Все файлы (*.*)",
         "wait_export": "Дождись окончания экспорта или отмени его.",
         "file_not_found": "Файл не найден.",
-        "unsupported_type": "Этот тип файла пока не поддерживается.\n\nПоддерживаются: MP4, MKV, MOV, TS, WebM, M4V.",
+        "unsupported_type": "Этот тип файла пока не поддерживается.\n\nПоддерживаются: MP4, MOV, M4V, MKV, WebM, TS, MTS, M2TS, AVI, FLV, MPG/MPEG, WMV.",
         "already_open": "Этот файл уже открыт: {name}",
         "opened": "Открыт: {name}",
         "previous_cut_status": "Предыдущий разрез: {time}",
@@ -277,7 +290,7 @@ UI_TEXT = {
         "tools_missing_ffmpeg": "ffmpeg.exe",
         "tools_missing": "Не найден(ы) {missing}.\n\nПоложи файлы в:\n  ffmpeg\\bin\\ рядом с программой\nили используй C:\\ffmpeg\\bin\\.",
         "cannot_overwrite_source": "Нельзя перезаписывать исходный файл.",
-        "file_filter_av": "MP4 (*.mp4);;MKV (*.mkv);;Все файлы (*.*)",
+        "file_filter_av": "MP4 (*.mp4);;MOV (*.mov);;MKV (*.mkv);;Все файлы (*.*)",
         "export_selected_dialog": "Экспорт выбранного фрагмента",
         "stopping_export": "Останавливаю экспорт…",
         "export_finished_status": "Lossless export завершён.",
@@ -318,6 +331,7 @@ HELP_HTML = {
 <h3>Opening and project</h3>
 <ul>
   <li><b>Open video [Ctrl+O]</b> — select a video file.</li>
+  <li><b>Supported input containers:</b> MP4, MOV, M4V, MKV, WebM, TS/MTS/M2TS, AVI, FLV, MPG/MPEG, WMV.</li>
   <li><b>Drag & Drop</b> — drop a supported video almost anywhere in the window.</li>
   <li><b>Reset [Ctrl+N]</b> — clear the current project.</li>
   <li>Opening a different file automatically resets the current project.</li>
@@ -349,6 +363,7 @@ HELP_HTML = {
   <li>The selected segment can be exported even if it is marked for deletion in the main edit.</li>
   <li><b>Export video</b> and <b>Export audio</b> are enabled by default.</li>
   <li>You can export video + audio, video only, or audio only.</li>
+  <li><b>Video output containers:</b> MP4, MOV, MKV. Other input containers default to MKV.</li>
   <li>If both stream checkboxes are disabled, export buttons are disabled.</li>
   <li>Audio-only export uses <b>MKA</b> and preserves the source audio streams via stream copy.</li>
   <li>Export can be cancelled while it is running.</li>
@@ -377,6 +392,7 @@ HELP_HTML = {
 <h3>Открытие и проект</h3>
 <ul>
   <li><b>Открыть видео [Ctrl+O]</b> — выбрать видео через Проводник.</li>
+  <li><b>Поддерживаемые входные контейнеры:</b> MP4, MOV, M4V, MKV, WebM, TS/MTS/M2TS, AVI, FLV, MPG/MPEG, WMV.</li>
   <li><b>Drag & Drop</b> — видео можно бросить почти в любую область окна.</li>
   <li><b>Сброс [Ctrl+N]</b> — очистить текущий проект и начать заново.</li>
   <li>Если открыть другой файл, текущий проект сбрасывается автоматически.</li>
@@ -408,6 +424,7 @@ HELP_HTML = {
   <li>Экспорт выбранного фрагмента работает независимо от того, отмечен он на удаление или нет.</li>
   <li><b>Экспорт видео</b> и <b>Экспорт звука</b> включены по умолчанию.</li>
   <li>Можно экспортировать видео со звуком, только видео или только звук.</li>
+  <li><b>Контейнеры для вывода видео:</b> MP4, MOV, MKV. Для остальных входных контейнеров по умолчанию предлагается MKV.</li>
   <li>Если снять обе галочки, кнопки экспорта становятся недоступны.</li>
   <li>При экспорте только звука используется контейнер <b>MKA</b>; аудиопотоки копируются без перекодирования.</li>
   <li>Во время экспорта можно нажать <b>Отмена экспорта</b>.</li>
@@ -452,6 +469,7 @@ def find_tool(exe_name: str) -> str:
     candidates = [
         base / exe_name,
         base / "ffmpeg" / "bin" / exe_name,
+        base / "tools" / "ffmpeg-minimal" / "runtime" / exe_name,
         Path(r"C:\ffmpeg\bin") / exe_name,
     ]
 
@@ -1217,6 +1235,25 @@ class LosslessExporter:
 
     def _run(self, cmd: list[str]) -> None:
         self._check_cancelled()
+
+        # The minimal FFmpeg build intentionally keeps format support small.
+        # Do not depend on output-extension auto-detection: select the muxer
+        # explicitly for every container VFR FastCut currently exports.
+        if cmd:
+            output_suffix = Path(str(cmd[-1])).suffix.lower()
+            output_format = {
+                ".mp4": "mp4",
+                ".mov": "mov",
+                ".mkv": "matroska",
+                ".mka": "matroska",
+            }.get(output_suffix)
+
+            if output_format:
+                cmd = [
+                    *cmd[:-1],
+                    "-f", output_format,
+                    cmd[-1],
+                ]
 
         creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
         proc = subprocess.Popen(
@@ -2908,6 +2945,13 @@ class MainWindow(QMainWindow):
             and not self.export_video_check.isChecked()
         )
 
+    def _default_video_output_suffix(self) -> str:
+        """Keep safe native outputs; remux other input containers to MKV."""
+        source_suffix = Path(self.input_path).suffix.lower()
+        if source_suffix in VIDEO_OUTPUT_SUFFIXES:
+            return source_suffix
+        return ".mkv"
+
     def _prepare_export_dialog(
         self,
         name_suffix: str,
@@ -2921,19 +2965,23 @@ class MainWindow(QMainWindow):
                 "Matroska Audio (*.mka)",
             )
 
-        default = src.with_name(src.stem + name_suffix + src.suffix)
+        output_suffix = self._default_video_output_suffix()
+        default = src.with_name(src.stem + name_suffix + output_suffix)
         return (
             str(default),
             self._t("file_filter_av"),
         )
 
     def _normalize_export_output(self, output: str) -> str:
-        if not self._audio_only_export():
-            return output
-
         path = Path(output)
-        if path.suffix.lower() != ".mka":
-            path = path.with_suffix(".mka")
+
+        if self._audio_only_export():
+            if path.suffix.lower() != ".mka":
+                path = path.with_suffix(".mka")
+            return str(path)
+
+        if path.suffix.lower() not in VIDEO_OUTPUT_SUFFIXES:
+            path = path.with_suffix(self._default_video_output_suffix())
         return str(path)
 
     def export_lossless(self):

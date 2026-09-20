@@ -1,68 +1,97 @@
 # Third-party software notices
 
-VFR FastCut's own source code is licensed under the MIT License. The project also uses and, in packaged Windows releases, may redistribute third-party components under their own licenses.
+VFR FastCut's own source code is licensed under the MIT License. Packaged Windows builds also redistribute third-party components under their own licenses.
 
-This file is a practical redistribution checklist, not legal advice. Always verify the exact versions and binaries included in each Release. Exact versions used for packaged releases are recorded in `THIRD_PARTY_VERSIONS.md`.
+This file is a practical redistribution record, not legal advice. Exact versions used for packaged releases are recorded in `THIRD_PARTY_VERSIONS.md`.
 
 ## Qt for Python / PySide6
 
 VFR FastCut uses PySide6 / Qt for Python and Qt modules including QtCore, QtGui, QtWidgets and QtMultimedia.
 
-Qt for Python Community Edition is offered under LGPLv3/GPLv3 (and Qt also offers commercial licensing). Binary distributions must comply with the license terms that apply to the exact Qt/PySide6 components shipped.
-
-For the VFR FastCut v0.2.33 Windows x64 package, the recorded versions are:
+For v0.2.34 the recorded versions are:
 
 - PySide6 `6.11.2`
 - Qt `6.11.2`
+
+The portable application is intentionally distributed as a PyInstaller `onedir` package so Qt/PySide6 runtime files remain separate files in the application directory.
 
 Official licensing information:
 - https://doc.qt.io/qtforpython-6/
 - https://doc.qt.io/qt-6/licensing.html
 
-When publishing a binary package:
+The applicable Qt/PySide6 license texts and notices must remain with redistributed binary builds.
 
-- include the applicable LGPL/GPL license texts;
-- keep the Qt/PySide6 shared libraries separable from the application where applicable;
-- make the corresponding source material required by the applicable license available through release assets or another project-controlled location;
-- record the exact PySide6 and Qt versions in `THIRD_PARTY_VERSIONS.md`.
+## FFmpeg / FFprobe — v0.2.34
 
-The project intentionally uses a PyInstaller `onedir` distribution, which keeps Qt/PySide6 runtime files visible as separate files instead of hiding everything inside a single executable.
+VFR FastCut invokes `ffmpeg.exe` and `ffprobe.exe` as external command-line programs.
 
-## FFmpeg / FFprobe
+Starting with v0.2.34, the Windows portable package uses a project-specific minimal FFmpeg runtime built from the official FFmpeg `9.0.2` release source.
 
-VFR FastCut invokes `ffmpeg.exe` and `ffprobe.exe` as external command-line tools.
+Recorded build properties:
 
-Upstream FFmpeg is primarily LGPLv2.1+, but a build becomes GPL when GPL components are enabled. Therefore the license of a redistributed FFmpeg binary depends on how that binary was built.
+- official FFmpeg 9.0.2 source tarball
+- shared FFmpeg DLLs
+- `--disable-gpl`
+- `--disable-nonfree`
+- `--disable-version3`
+- external library autodetection disabled
+- encoders and decoders disabled for the 0.2.x stream-copy use case
+- recorded build license target: LGPL v2.1 or later
 
-Official FFmpeg license information:
+The build recipe is stored in `tools/ffmpeg-minimal/`, and the complete build flags and source SHA-256 are recorded in the generated `BUILD_INFO.txt`.
+
+The portable package includes:
+- `ffmpeg\bin\COPYING.LGPLv2.1`
+- `LICENSES\LGPL-2.1.txt`
+
+The exact source archive used to build the runtime is retained as `ffmpeg-9.0.2-source.tar.xz` and should be published with the corresponding Release assets or otherwise kept available from a project-controlled location.
+
+Official FFmpeg licensing information:
 - https://ffmpeg.org/legal.html
 - https://ffmpeg.org/doxygen/trunk/md_LICENSE.html
 
-### Gyan.dev Windows build used by v0.2.33
+## MinGW runtime DLLs — v0.2.34
 
-The VFR FastCut v0.2.33 Windows x64 package was built with:
+The custom FFmpeg runtime also bundles two runtime DLLs from the MSYS2 UCRT64 toolchain:
+
+### libwinpthread-1.dll
+
+Recorded source package:
+- `mingw-w64-ucrt-x86_64-libwinpthread`
+- version `14.0.0.r409.g6de5d3b4d-1`
+
+Package-provided license text included in the project:
+- `LICENSES/MinGW-w64-libwinpthread-COPYING.txt`
+
+### libgcc_s_seh-1.dll
+
+Recorded source package:
+- `mingw-w64-ucrt-x86_64-gcc-libs`
+- version `16.2.0-3`
+
+Package-provided license files included in the project:
+- `LICENSES/GCC-COPYING.LIB.txt`
+- `LICENSES/GCC-COPYING.RUNTIME.txt`
+- `LICENSES/GCC-COPYING3.txt`
+- `LICENSES/GCC-runtime-README.txt`
+
+These files are copied from the installed MSYS2 packages used for the release build.
+
+## Historical FFmpeg runtime — v0.2.33
+
+The v0.2.33 Windows x64 package used:
 
 - `ffmpeg version 2026-09-17-git-7070fe638e-full_build-www.gyan.dev`
 - FFmpeg commit `7070fe638e`
 - Gyan.dev full static build
 - GCC `16.2.0 (Rev3, Built by MSYS2 project)`
-- GPLv3 licensing for the redistributed Gyan.dev build
+- recorded GPLv3 licensing for that redistributed build
 
-Build/source information:
-- https://www.gyan.dev/ffmpeg/builds/
-- https://github.com/FFmpeg/FFmpeg/commit/7070fe638e
-
-When redistributing a packaged build containing this FFmpeg/FFprobe binary set:
-
-- include the GPLv3 license text;
-- record the exact build identifier in `THIRD_PARTY_VERSIONS.md`;
-- make the corresponding source material required by the GPL available through release assets or another project-controlled location.
-
-Because Gyan.dev `full_build` includes many optional libraries that VFR FastCut 0.2.x does not need for stream-copy editing, future releases may switch to a smaller purpose-built FFmpeg package with a simpler dependency and licensing footprint.
+This historical record is retained because published v0.2.33 binaries do not change when later releases switch runtimes.
 
 ## PyInstaller
 
-PyInstaller is a build tool, not a runtime Python dependency of VFR FastCut source. PyInstaller is GPL-licensed with an exception that permits distributing applications created with it under the application's own license, subject to the licenses of bundled dependencies.
+PyInstaller is used as the Windows build tool. Its bootloader exception permits distribution of applications created with it subject to the licenses of the application and bundled dependencies.
 
 Official information:
 - https://pyinstaller.org/en/stable/license.html

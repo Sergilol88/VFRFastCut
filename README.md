@@ -41,6 +41,16 @@ Download the newer Release and extract it to a new folder or replace the previou
 - Built-in help (`F1`) covering features, shortcuts, and lossless-mode limitations.
 - No account, cloud service, or API token required.
 
+## Supported formats
+
+**Input containers:** MP4, MOV, M4V, MKV, WebM, TS, MTS, M2TS, AVI, FLV, MPG/MPEG, WMV.
+
+**Video output containers:** MP4, MOV, MKV. **Audio-only output:** MKA.
+
+When the source is MP4, MOV or MKV, FastCut suggests the same container for export. Other supported input containers default to MKV, which is the safer general-purpose stream-copy container.
+
+VFR FastCut uses stream copy, so a supported container does not guarantee that every possible codec combination can be remuxed into every output container. If a stream is incompatible with MP4/MOV, use MKV.
+
 ## How lossless cutting works
 
 VFR FastCut does not decode and re-encode the video during normal lossless export. FFmpeg copies already encoded packets into a new file.
