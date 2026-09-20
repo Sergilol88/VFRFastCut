@@ -78,7 +78,7 @@ This section is for developers and contributors. Regular users should use the po
 
 - Primary target: Windows 10/11
 - Python 3.10+
-- PySide6 6.7+
+- PySide6 6.11.2 for reproducible release builds
 - FFmpeg and FFprobe
 
 Install the Python dependency:
@@ -101,7 +101,7 @@ FFmpeg/FFprobe are searched in this order:
 
 ## Building for Windows
 
-See [BUILD.md](BUILD.md) for the portable PyInstaller build instructions.
+See [BUILD.md](BUILD.md) for the portable PyInstaller build instructions and third-party release checklist.
 
 ## Current limitations
 
@@ -124,4 +124,4 @@ Please use GitHub Issues. For bug reports, include:
 
 VFR FastCut source code is licensed under the [MIT License](LICENSE).
 
-The project uses third-party components with their own licenses, including Qt for Python / PySide6 and FFmpeg. Before redistributing compiled binaries, see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+The project uses third-party components with their own licenses, including Qt for Python / PySide6 and FFmpeg. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for redistribution notes and [THIRD_PARTY_VERSIONS.md](THIRD_PARTY_VERSIONS.md) for the exact third-party versions recorded for packaged releases.

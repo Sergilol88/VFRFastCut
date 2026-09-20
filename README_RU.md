@@ -76,7 +76,7 @@ Python, FFmpeg и другие runtime-компоненты отдельно у�
 
 - Основная целевая платформа — Windows 10/11.
 - Python 3.10+
-- PySide6 6.7+
+- PySide6 6.11.2 для воспроизводимых релизных сборок
 - FFmpeg и FFprobe
 
 Установка Python-зависимости:
@@ -99,7 +99,7 @@ FFmpeg/FFprobe ищутся в следующем порядке:
 
 ## Сборка под Windows
 
-Инструкция для portable-сборки PyInstaller находится в [BUILD.md](BUILD.md).
+Инструкция для portable-сборки PyInstaller и чек-лист сторонних компонентов находятся в [BUILD.md](BUILD.md).
 
 ## Текущие ограничения
 
@@ -122,4 +122,4 @@ FFmpeg/FFprobe ищутся в следующем порядке:
 
 Исходный код VFR FastCut распространяется по [MIT License](LICENSE).
 
-Программа использует сторонние компоненты с собственными лицензиями, в частности Qt for Python / PySide6 и FFmpeg. Перед распространением готовых бинарных сборок см. [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+Программа использует сторонние компоненты с собственными лицензиями, в частности Qt for Python / PySide6 и FFmpeg. Условия и заметки по распространению находятся в [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md), а точные версии сторонних компонентов для опубликованных сборок — в [THIRD_PARTY_VERSIONS.md](THIRD_PARTY_VERSIONS.md).
