@@ -10,6 +10,7 @@ SRC_ARCHIVE="${WORK_DIR}/ffmpeg-${FFMPEG_VERSION}.tar.xz"
 SRC_DIR="${WORK_DIR}/ffmpeg-${FFMPEG_VERSION}"
 INSTALL_DIR="${SCRIPT_DIR}/out"
 RUNTIME_DIR="${SCRIPT_DIR}/runtime"
+MINGW_RUNTIME_BIN="${MINGW_PREFIX:-/ucrt64}/bin"
 
 if [[ "${MSYSTEM:-}" != "UCRT64" ]]; then
   echo "ERROR: run this script from the MSYS2 UCRT64 shell." >&2
@@ -71,6 +72,24 @@ make install
 cp "$INSTALL_DIR/bin/ffmpeg.exe" "$RUNTIME_DIR/"
 cp "$INSTALL_DIR/bin/ffprobe.exe" "$RUNTIME_DIR/"
 find "$INSTALL_DIR/bin" -maxdepth 1 -type f -name '*.dll' -exec cp '{}' "$RUNTIME_DIR/" ';'
+
+# FFmpeg built with the MSYS2 UCRT64 GCC runtime depends on these two
+# MinGW runtime DLLs when launched outside the MSYS2 shell. Bundle them
+# explicitly so the resulting FFmpeg runtime is portable on Windows.
+RUNTIME_DLLS=(
+  "libwinpthread-1.dll"
+  "libgcc_s_seh-1.dll"
+)
+
+for dll in "${RUNTIME_DLLS[@]}"; do
+  source_dll="${MINGW_RUNTIME_BIN}/${dll}"
+  if [[ ! -f "$source_dll" ]]; then
+    echo "ERROR: required MinGW runtime DLL not found: $source_dll" >&2
+    exit 1
+  fi
+  cp "$source_dll" "$RUNTIME_DIR/"
+done
+
 cp COPYING.LGPLv2.1 "$RUNTIME_DIR/"
 
 {
@@ -81,6 +100,9 @@ cp COPYING.LGPLv2.1 "$RUNTIME_DIR/"
   echo "Source SHA256: ${SOURCE_SHA256}"
   echo "Build environment: MSYS2 UCRT64"
   echo "License target: LGPL v2.1 or later"
+  echo
+  echo "Bundled MinGW runtime DLLs:"
+  printf '  %s\n' "${RUNTIME_DLLS[@]}"
   echo
   echo "Configure flags:"
   printf '  %s\n' "${CONFIGURE_FLAGS[@]}"
