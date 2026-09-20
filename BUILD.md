@@ -25,7 +25,17 @@ python -c "from PySide6.QtCore import qVersion; print(qVersion())"
 
 ## 2. Prepare FFmpeg
 
-The portable build can bundle `ffmpeg.exe` and `ffprobe.exe` from:
+The current v0.2.33 binary release used the recorded Gyan.dev build. Its exact historical details remain in `THIRD_PARTY_VERSIONS.md`.
+
+For future releases, the preferred target is the reproducible minimal LGPL FFmpeg runtime documented in:
+
+```text
+tools/ffmpeg-minimal/README.md
+```
+
+Build that runtime first and verify it against a real VFR/Twitch sample before packaging a release.
+
+Until the switch is validated, the portable build can still bundle:
 
 ```text
 C:\ffmpeg\bin\ffmpeg.exe
@@ -58,6 +68,8 @@ Run from the repository root:
 ```powershell
 python -m PyInstaller --noconfirm --clean --onedir --windowed --contents-directory "." --name "VFRFastCut" --icon "VFRFastCut.ico" --add-data "VFRFastCut.ico;." --add-data "LICENSE;." --add-data "THIRD_PARTY_NOTICES.md;." --add-data "THIRD_PARTY_VERSIONS.md;." --add-data "README.md;." --add-data "README_RU.md;." --add-data "LICENSES;LICENSES" --add-binary "C:\ffmpeg\bin\ffmpeg.exe;ffmpeg\bin" --add-binary "C:\ffmpeg\bin\ffprobe.exe;ffmpeg\bin" vfr_fastcut.py
 ```
+
+When the custom runtime is adopted, package the entire contents of `tools\ffmpeg-minimal\runtime\` into `ffmpeg\bin\` rather than only the two executables, because the custom LGPL build uses shared FFmpeg DLLs.
 
 Result:
 
