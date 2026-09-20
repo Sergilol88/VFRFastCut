@@ -63,7 +63,7 @@ try {
     Write-Host "Video-only stream copy: OK"
 
     $audio = Join-Path $TempRoot "audio.mka"
-    & $Ffmpeg -hide_banner -loglevel error -y -ss 1 -i $InputFile -t 3 -map '0:a?' -map_metadata 0 -c copy $audio
+    & $Ffmpeg -hide_banner -loglevel error -y -ss 1 -i $InputFile -t 3 -map '0:a?' -map_metadata 0 -c copy -f matroska $audio
     if ($LASTEXITCODE -ne 0 -or -not (Test-Path $audio)) { throw "Audio-only stream copy failed." }
     Write-Host "Audio-only stream copy: OK"
 
