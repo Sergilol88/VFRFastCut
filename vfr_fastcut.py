@@ -6,6 +6,7 @@ from __future__ import annotations
 import bisect
 import ctypes
 import math
+import os
 import shutil
 import subprocess
 import sys
@@ -14,6 +15,12 @@ import threading
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
+
+# Qt Multimedia hardware texture conversion can produce corrupted/green preview
+# frames on some Windows GPU/driver combinations. Keep hardware video decoding
+# available, but use the more compatible texture-conversion path by default.
+# setdefault() still lets advanced users explicitly override the Qt setting.
+os.environ["QT_DISABLE_HW_TEXTURES_CONVERSION"] = "1"
 
 from PySide6.QtCore import QLocale, QObject, QEvent, QRectF, QSettings, Qt, QTimer, QUrl, Signal
 from PySide6.QtGui import QAction, QColor, QDesktopServices, QIcon, QKeySequence, QPainter, QPen
@@ -42,7 +49,7 @@ from PySide6.QtWidgets import (
 )
 
 APP_NAME = "VFR FastCut"
-APP_VERSION = "0.2.34"
+APP_VERSION = "0.2.35"
 
 SUPPORTED_VIDEO_SUFFIXES = frozenset({
     ".mp4",
@@ -2086,6 +2093,7 @@ class MainWindow(QMainWindow):
             path = self._drop_video_path(event.mimeData(), require_existing_file=True)
             if path:
                 self.load_video(path)
+                QTimer.singleShot(75, self._activate_after_drop)
                 event.acceptProposedAction()
                 return True
 
@@ -2411,6 +2419,23 @@ class MainWindow(QMainWindow):
         self._update_timeline()
         self._update_ui_state()
 
+    def _activate_after_drop(self):
+        """Request foreground and keyboard focus after a successful file drop."""
+        self.raise_()
+        self.activateWindow()
+        QApplication.setActiveWindow(self)
+
+        if sys.platform == "win32":
+            hwnd = int(self.winId())
+            user32 = ctypes.windll.user32
+            SW_RESTORE = 9
+
+            user32.ShowWindow(hwnd, SW_RESTORE)
+            user32.BringWindowToTop(hwnd)
+            user32.SetForegroundWindow(hwnd)
+
+        self.setFocus(Qt.FocusReason.OtherFocusReason)
+
     def dragEnterEvent(self, event):
         if not self._export_busy and self._drop_video_path(
             event.mimeData(),
@@ -2440,6 +2465,7 @@ class MainWindow(QMainWindow):
         )
         if path:
             self.load_video(path)
+            QTimer.singleShot(75, self._activate_after_drop)
             event.acceptProposedAction()
         else:
             event.ignore()

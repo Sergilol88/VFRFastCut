@@ -4,7 +4,7 @@ This file records the third-party component versions used for packaged VFR FastC
 
 It complements `THIRD_PARTY_NOTICES.md` and the license texts in `LICENSES/`. It is not a substitute for the license terms that apply to redistributed third-party binaries.
 
-## VFR FastCut v0.2.34 — Windows x64
+## VFR FastCut v0.2.34 / v0.2.35 — Windows x64
 
 ### Qt for Python / PySide6
 
@@ -19,7 +19,7 @@ Official project information:
 
 ### FFmpeg / FFprobe
 
-VFR FastCut v0.2.34 switches from the previous third-party full build to the project-specific minimal runtime built from the official FFmpeg release source.
+Starting with VFR FastCut v0.2.34, packaged Windows builds use the project-specific minimal runtime built from the official FFmpeg release source.
 
 - FFmpeg: `9.0.2`
 - Source: `https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz`
@@ -38,7 +38,7 @@ The complete configure flags and build metadata are generated into `ffmpeg\bin\B
 The exact source archive used for the build is retained as:
 `ffmpeg-9.0.2-source.tar.xz`
 
-It should be published with the v0.2.34 Release assets or otherwise kept available from a project-controlled location.
+It should be published with the corresponding Release assets or otherwise kept available from a project-controlled location.
 
 ### MinGW runtime DLLs bundled with the FFmpeg runtime
 
@@ -75,7 +75,7 @@ It should be published with the v0.2.34 Release assets or otherwise kept availab
 - Compiler: `gcc 16.2.0 (Rev3, Built by MSYS2 project)`
 - Recorded license for that redistributed Gyan.dev build: GPLv3
 
-The v0.2.33 entry is retained as historical release metadata and is not a description of the v0.2.34 runtime.
+The v0.2.33 entry is retained as historical release metadata and is not a description of the v0.2.34+ runtime.
 
 ## Release process
 

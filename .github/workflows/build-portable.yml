@@ -10,6 +10,7 @@ on:
     paths:
       - '.github/workflows/build-portable.yml'
       - 'vfr_fastcut.py'
+      - 'pyinstaller_runtime_hook.py'
       - 'requirements.txt'
       - 'VFRFastCut.ico'
       - 'LICENSE'
@@ -132,6 +133,7 @@ jobs:
             --clean `
             --onedir `
             --windowed `
+            --runtime-hook ".\pyinstaller_runtime_hook.py" `
             --contents-directory "." `
             --name "VFRFastCut" `
             --icon "VFRFastCut.ico" `

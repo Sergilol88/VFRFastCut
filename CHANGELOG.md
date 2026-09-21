@@ -2,6 +2,13 @@
 
 All notable changes to VFR FastCut are documented here.
 
+## 0.2.35
+
+- On Windows, VFR FastCut requests foreground activation after a successful Drag & Drop so playback shortcuts work immediately.
+- Disabled Qt Multimedia hardware texture conversion at the earliest packaged-app startup stage to prevent green/corrupted preview frames on some Windows GPU/driver combinations.
+- Hardware video decoding remains available; the compatibility change only affects the preview rendering path.
+- Lossless FFmpeg stream-copy export is unchanged.
+
 ## 0.2.34
 
 - Expanded supported input containers to MP4, MOV, M4V, MKV, WebM, TS/MTS/M2TS, AVI, FLV, MPG/MPEG and WMV.

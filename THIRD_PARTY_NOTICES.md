@@ -8,7 +8,7 @@ This file is a practical redistribution record, not legal advice. Exact versions
 
 VFR FastCut uses PySide6 / Qt for Python and Qt modules including QtCore, QtGui, QtWidgets and QtMultimedia.
 
-For v0.2.34 the recorded versions are:
+For v0.2.34 and v0.2.35 the recorded versions are:
 
 - PySide6 `6.11.2`
 - Qt `6.11.2`
@@ -21,7 +21,7 @@ Official licensing information:
 
 The applicable Qt/PySide6 license texts and notices must remain with redistributed binary builds.
 
-## FFmpeg / FFprobe — v0.2.34
+## FFmpeg / FFprobe — v0.2.34 / v0.2.35
 
 VFR FastCut invokes `ffmpeg.exe` and `ffprobe.exe` as external command-line programs.
 
@@ -50,7 +50,7 @@ Official FFmpeg licensing information:
 - https://ffmpeg.org/legal.html
 - https://ffmpeg.org/doxygen/trunk/md_LICENSE.html
 
-## MinGW runtime DLLs — v0.2.34
+## MinGW runtime DLLs — v0.2.34 / v0.2.35
 
 The custom FFmpeg runtime also bundles two runtime DLLs from the MSYS2 UCRT64 toolchain:
 
