@@ -16,16 +16,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
-# Qt Multimedia hardware texture conversion can produce corrupted/green preview
-# frames on some Windows GPU/driver combinations. Keep hardware video decoding
-# available, but use the more compatible texture-conversion path by default.
-# setdefault() still lets advanced users explicitly override the Qt setting.
-os.environ["QT_DISABLE_HW_TEXTURES_CONVERSION"] = "1"
-
 from PySide6.QtCore import QLocale, QObject, QEvent, QRectF, QSettings, Qt, QTimer, QUrl, Signal
-from PySide6.QtGui import QAction, QColor, QDesktopServices, QIcon, QKeySequence, QPainter, QPen
-from PySide6.QtMultimedia import QAudioOutput, QMediaPlayer
-from PySide6.QtMultimediaWidgets import QVideoWidget
+from PySide6.QtGui import QAction, QColor, QDesktopServices, QIcon, QImage, QKeySequence, QPainter, QPen, QTransform
+from PySide6.QtMultimedia import QAudioOutput, QMediaPlayer, QVideoSink
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -49,7 +42,7 @@ from PySide6.QtWidgets import (
 )
 
 APP_NAME = "VFR FastCut"
-APP_VERSION = "0.2.35"
+APP_VERSION = "0.2.36-dev"
 
 SUPPORTED_VIDEO_SUFFIXES = frozenset({
     ".mp4",
@@ -718,6 +711,90 @@ def clone_segments(segments: list[Segment]) -> list[Segment]:
         Segment(seg.start, seg.end, seg.deleted)
         for seg in segments
     ]
+
+
+
+class SafePreviewWidget(QWidget):
+    """Raster preview that avoids QVideoWidget/native video surfaces.
+
+    QMediaPlayer keeps its normal Qt Multimedia decode path. Decoded frames are
+    received through QVideoSink, converted to QImage and painted through the
+    regular QWidget backing store. This deliberately avoids the dedicated
+    native/video-surface presentation path that can interact badly with
+    VRR/G-SYNC/MPO on some Windows/NVIDIA configurations.
+    """
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._image = QImage()
+
+        self.video_sink = QVideoSink(self)
+        self.video_sink.videoFrameChanged.connect(self._on_video_frame)
+
+        self.setSizePolicy(
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Expanding,
+        )
+        self.setAttribute(Qt.WidgetAttribute.WA_OpaquePaintEvent, True)
+        self.setAutoFillBackground(False)
+
+    def clear_frame(self):
+        if self._image.isNull():
+            return
+        self._image = QImage()
+        self.update()
+
+    def _on_video_frame(self, frame):
+        if not frame.isValid():
+            self.clear_frame()
+            return
+
+        image = frame.toImage()
+        if image.isNull():
+            return
+
+        rotation = getattr(frame.rotation(), "value", 0)
+        if rotation:
+            transform = QTransform()
+            transform.rotate(float(rotation))
+            image = image.transformed(
+                transform,
+                Qt.TransformationMode.FastTransformation,
+            )
+
+        if frame.mirrored():
+            image = image.mirrored(True, False)
+
+        self._image = image
+        self.update()
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.fillRect(self.rect(), Qt.GlobalColor.black)
+
+        if self._image.isNull() or self.width() <= 0 or self.height() <= 0:
+            return
+
+        image_size = self._image.size()
+        target_size = image_size.scaled(
+            self.size(),
+            Qt.AspectRatioMode.KeepAspectRatio,
+        )
+
+        x = (self.width() - target_size.width()) / 2.0
+        y = (self.height() - target_size.height()) / 2.0
+        target = QRectF(
+            x,
+            y,
+            target_size.width(),
+            target_size.height(),
+        )
+
+        painter.setRenderHint(
+            QPainter.RenderHint.SmoothPixmapTransform,
+            False,
+        )
+        painter.drawImage(target, self._image)
 
 
 class TimelineWidget(QWidget):
@@ -1796,9 +1873,8 @@ class MainWindow(QMainWindow):
         self._prime_timer.setInterval(90)
         self._prime_timer.timeout.connect(self._finish_prime_first_frame)
 
-        self.video = QVideoWidget()
-        self.video.setAspectRatioMode(Qt.AspectRatioMode.KeepAspectRatio)
-        self.player.setVideoOutput(self.video)
+        self.video = SafePreviewWidget()
+        self.player.setVideoSink(self.video.video_sink)
 
         self.timeline = TimelineWidget()
         self.timeline.seekRequested.connect(self.seek_seconds_smooth)
@@ -2010,7 +2086,7 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(self._t("ready"))
 
         # Make almost the whole application workspace a drop target.
-        # Child widgets (especially QVideoWidget) can otherwise swallow
+        # Child widgets can otherwise swallow
         # drag/drop events before MainWindow sees them.
         self._install_drop_targets()
 
@@ -2054,7 +2130,7 @@ class MainWindow(QMainWindow):
 
     def _install_drop_targets(self):
         # MainWindow already handles its own drag/drop events.
-        # Child widgets need the event filter because QVideoWidget and some
+        # Child widgets need the event filter because some
         # controls otherwise consume drag events before they reach MainWindow.
 
         # Central workspace and all QWidget descendants:
@@ -2324,6 +2400,7 @@ class MainWindow(QMainWindow):
 
         self.player.stop()
         self.player.setSource(QUrl())
+        self.video.clear_frame()
 
         self.input_path = ""
         self.duration = 0.0
@@ -2413,6 +2490,7 @@ class MainWindow(QMainWindow):
         self.timeline.offset = 0.0
 
         self._preview_prime_pending = True
+        self.video.clear_frame()
         self.player.setSource(QUrl.fromLocalFile(str(video_path)))
 
         self.statusBar().showMessage(self._t("opened", name=video_path.name))
@@ -3163,6 +3241,8 @@ class MainWindow(QMainWindow):
         self._seek_timer.stop()
         self._cancel_preview_prime()
         self.player.stop()
+        self.player.setVideoSink(None)
+        self.video.clear_frame()
 
         exporter = self.exporter
         thread = self.export_thread
