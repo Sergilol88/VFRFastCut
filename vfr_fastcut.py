@@ -42,7 +42,7 @@ from PySide6.QtWidgets import (
 )
 
 APP_NAME = "VFR FastCut"
-APP_VERSION = "0.2.36-dev"
+APP_VERSION = "0.2.36"
 
 SUPPORTED_VIDEO_SUFFIXES = frozenset({
     ".mp4",

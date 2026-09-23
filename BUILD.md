@@ -9,7 +9,7 @@ python -m pip install -r requirements.txt
 python -m pip install pyinstaller
 ```
 
-For VFR FastCut v0.2.35 Windows x64:
+For VFR FastCut v0.2.36 Windows x64:
 
 ```text
 PySide6 6.11.2
@@ -25,7 +25,7 @@ python -c "from PySide6.QtCore import qVersion; print(qVersion())"
 
 ## 2. Build and verify the minimal FFmpeg runtime
 
-The v0.2.35 portable package uses the project-specific runtime under:
+The v0.2.36 portable package uses the project-specific runtime under:
 
 ```text
 tools\ffmpeg-minimal\
@@ -86,7 +86,7 @@ Remove-Item .\VFRFastCut.spec -Force -ErrorAction SilentlyContinue
 Build the application itself without the old Gyan FFmpeg binaries:
 
 ```powershell
-python -m PyInstaller --noconfirm --clean --onedir --windowed --runtime-hook ".\pyinstaller_runtime_hook.py" --contents-directory "." --name "VFRFastCut" --icon "VFRFastCut.ico" --add-data "VFRFastCut.ico;." --add-data "LICENSE;." --add-data "THIRD_PARTY_NOTICES.md;." --add-data "THIRD_PARTY_VERSIONS.md;." --add-data "README.md;." --add-data "README_RU.md;." --add-data "LICENSES;LICENSES" vfr_fastcut.py
+python -m PyInstaller --noconfirm --clean --onedir --windowed --contents-directory "." --name "VFRFastCut" --icon "VFRFastCut.ico" --add-data "VFRFastCut.ico;." --add-data "LICENSE;." --add-data "THIRD_PARTY_NOTICES.md;." --add-data "THIRD_PARTY_VERSIONS.md;." --add-data "README.md;." --add-data "README_RU.md;." --add-data "LICENSES;LICENSES" vfr_fastcut.py
 ```
 
 Create the FFmpeg payload directory and copy the entire verified custom runtime:
@@ -96,7 +96,7 @@ New-Item -ItemType Directory -Force .\dist\VFRFastCut\ffmpeg\bin | Out-Null
 Copy-Item .\tools\ffmpeg-minimal\runtime\* .\dist\VFRFastCut\ffmpeg\bin\ -Force
 ```
 
-Do not copy FFmpeg/FFprobe from `C:\ffmpeg` for v0.2.35.
+Do not copy FFmpeg/FFprobe from `C:\ffmpeg` for v0.2.36.
 
 Result:
 
@@ -142,15 +142,15 @@ Rename-Item C:\ffmpeg_BACKUP C:\ffmpeg
 ## 6. Create the Release archive
 
 ```powershell
-Remove-Item .\VFRFastCut-v0.2.35-Windows-x64.zip -Force -ErrorAction SilentlyContinue
-tar.exe -a -c -f VFRFastCut-v0.2.35-Windows-x64.zip -C dist VFRFastCut
+Remove-Item .\VFRFastCut-v0.2.36-Windows-x64.zip -Force -ErrorAction SilentlyContinue
+tar.exe -a -c -f VFRFastCut-v0.2.36-Windows-x64.zip -C dist VFRFastCut
 ```
 
 Create the checksum:
 
 ```powershell
-(Get-FileHash .\VFRFastCut-v0.2.35-Windows-x64.zip -Algorithm SHA256).Hash.ToLower() |
-    Set-Content .\VFRFastCut-v0.2.35-Windows-x64.zip.sha256 -Encoding ascii
+(Get-FileHash .\VFRFastCut-v0.2.36-Windows-x64.zip -Algorithm SHA256).Hash.ToLower() |
+    Set-Content .\VFRFastCut-v0.2.36-Windows-x64.zip.sha256 -Encoding ascii
 ```
 
 ## 7. Release assets
@@ -158,8 +158,8 @@ Create the checksum:
 Publish these assets with the GitHub Release:
 
 ```text
-VFRFastCut-v0.2.35-Windows-x64.zip
-VFRFastCut-v0.2.35-Windows-x64.zip.sha256
+VFRFastCut-v0.2.36-Windows-x64.zip
+VFRFastCut-v0.2.36-Windows-x64.zip.sha256
 ffmpeg-9.0.2-source.tar.xz
 ```
 

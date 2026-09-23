@@ -2,11 +2,11 @@
 
 All notable changes to VFR FastCut are documented here.
 
-## 0.2.36-dev
+## 0.2.36
 
 - Reworked video preview rendering to avoid the native `QVideoWidget` presentation path on Windows.
 - Preview frames are now received through `QVideoSink`, converted to `QImage`, and painted in a regular `QWidget`.
-- This prevents the VRR / Adaptive Sync / NVIDIA G-SYNC display failures reproduced with the previous preview path, including black preview frames, flicker, and temporary full-monitor black screens.
+- The new preview path avoids the native presentation surface associated with the reproduced VRR / Adaptive Sync / NVIDIA G-SYNC failures, including black preview frames, flicker, and temporary full-monitor black screens.
 - Qt hardware video decoding and hardware texture conversion remain at their default behavior; no NVIDIA G-SYNC application exclusion is required for the new preview path in testing.
 - Lossless FFmpeg stream-copy export is unchanged.
 

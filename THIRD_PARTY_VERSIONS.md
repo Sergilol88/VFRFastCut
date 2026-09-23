@@ -4,7 +4,7 @@ This file records the third-party component versions used for packaged VFR FastC
 
 It complements `THIRD_PARTY_NOTICES.md` and the license texts in `LICENSES/`. It is not a substitute for the license terms that apply to redistributed third-party binaries.
 
-## VFR FastCut v0.2.34 / v0.2.35 — Windows x64
+## VFR FastCut v0.2.34 / v0.2.35 / v0.2.36 — Windows x64
 
 ### Qt for Python / PySide6
 
