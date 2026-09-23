@@ -18,7 +18,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Prepare release metadata and packaged build path
+      - name: Prepare release metadata
         shell: bash
         run: |
           python - <<'PY'
@@ -52,16 +52,6 @@ jobs:
           hook_arg = '--runtime-hook ".\\pyinstaller_runtime_hook.py" '
           assert hook_arg in text
           text = text.replace(hook_arg, "", 1)
-          write(path, text)
-
-          path = ".github/workflows/build-portable.yml"
-          text = read(path)
-          hook_path = "      - 'pyinstaller_runtime_hook.py'\n"
-          hook_line = '            --runtime-hook ".\\pyinstaller_runtime_hook.py" `\n'
-          assert hook_path in text
-          assert hook_line in text
-          text = text.replace(hook_path, "", 1)
-          text = text.replace(hook_line, "", 1)
           write(path, text)
 
           path = "THIRD_PARTY_NOTICES.md"
@@ -136,8 +126,6 @@ jobs:
           hook = Path("pyinstaller_runtime_hook.py")
           assert hook.exists()
           hook.unlink()
-
-          Path(".github/workflows/prepare-0.2.36.yml").unlink()
           PY
 
       - name: Commit release preparation
