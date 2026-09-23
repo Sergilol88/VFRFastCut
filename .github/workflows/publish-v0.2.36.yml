@@ -38,12 +38,12 @@ jobs:
 
           test -f VFRFastCut-v0.2.36-Windows-x64.zip
           test -f VFRFastCut-v0.2.36-Windows-x64.zip.sha256
-          test -f ffmpeg-9.0.2-source.tar.xz
+          test -f tools/ffmpeg-minimal/ffmpeg-9.0.2-source.tar.xz
 
           sha256sum -c VFRFastCut-v0.2.36-Windows-x64.zip.sha256
 
           expected_ffmpeg="8c3850283eb25fa026482078a04051e0be17347b09ef81a0849bec15a96e002e"
-          actual_ffmpeg="$(sha256sum ffmpeg-9.0.2-source.tar.xz | awk '{print $1}')"
+          actual_ffmpeg="$(sha256sum tools/ffmpeg-minimal/ffmpeg-9.0.2-source.tar.xz | awk '{print $1}')"
           test "$actual_ffmpeg" = "$expected_ffmpeg"
 
       - name: Publish GitHub Release
@@ -57,4 +57,4 @@ jobs:
             --notes-file release-notes/v0.2.36.md \
             release-assets/VFRFastCut-v0.2.36-Windows-x64.zip \
             release-assets/VFRFastCut-v0.2.36-Windows-x64.zip.sha256 \
-            release-assets/ffmpeg-9.0.2-source.tar.xz
+            release-assets/tools/ffmpeg-minimal/ffmpeg-9.0.2-source.tar.xz
