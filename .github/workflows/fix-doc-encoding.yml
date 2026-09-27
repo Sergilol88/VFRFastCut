@@ -1,0 +1,104 @@
+name: Fix documentation encoding
+
+on:
+  push:
+    branches:
+      - fix/docs-encoding-0.4.15
+    paths:
+      - ".github/workflows/fix-doc-encoding.yml"
+      - "README.md"
+      - "README_RU.md"
+      - "BUILD.md"
+      - "CHANGELOG.md"
+      - "LICENSES/README.md"
+      - "THIRD_PARTY_NOTICES.md"
+      - "THIRD_PARTY_VERSIONS.md"
+      - "release-notes/v0.4.15.md"
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Reverse accidental UTF-8/CP1251 mojibake
+        shell: python
+        run: |
+          from pathlib import Path
+
+          paths = [
+              Path("README.md"),
+              Path("README_RU.md"),
+              Path("BUILD.md"),
+              Path("CHANGELOG.md"),
+              Path("LICENSES/README.md"),
+              Path("THIRD_PARTY_NOTICES.md"),
+              Path("THIRD_PARTY_VERSIONS.md"),
+              Path("release-notes/v0.4.15.md"),
+          ]
+
+          for path in paths:
+              original = path.read_text(encoding="utf-8")
+              try:
+                  repaired = original.encode("cp1251").decode("utf-8")
+              except (UnicodeEncodeError, UnicodeDecodeError) as exc:
+                  raise SystemExit(f"Encoding repair failed for {path}: {exc}")
+
+              # Verify this is a strict reversible single-pass repair, not a lossy rewrite.
+              if repaired.encode("utf-8").decode("cp1251") != original:
+                  raise SystemExit(f"Round-trip verification failed for {path}")
+
+              path.write_text(repaired, encoding="utf-8", newline="\n")
+              print(f"Repaired {path}")
+
+      - name: Validate repaired text
+        shell: python
+        run: |
+          from pathlib import Path
+
+          paths = [
+              Path("README.md"),
+              Path("README_RU.md"),
+              Path("BUILD.md"),
+              Path("CHANGELOG.md"),
+              Path("LICENSES/README.md"),
+              Path("THIRD_PARTY_NOTICES.md"),
+              Path("THIRD_PARTY_VERSIONS.md"),
+              Path("release-notes/v0.4.15.md"),
+          ]
+
+          suspicious = ("вЂ", "в†", "в–", "Р ", "РЎ", "РЈ", "Р°", "СЃ", "С‚")
+          leftovers = []
+          for path in paths:
+              text = path.read_text(encoding="utf-8")
+              hits = [marker for marker in suspicious if marker in text]
+              if hits:
+                  leftovers.append(f"{path}: {hits}")
+
+          if leftovers:
+              raise SystemExit("Suspicious mojibake remains:\n" + "\n".join(leftovers))
+
+          assert "[Русская версия](README_RU.md)" in Path("README.md").read_text(encoding="utf-8")
+          assert "QVideoSink → QImage → QWidget" in Path("release-notes/v0.4.15.md").read_text(encoding="utf-8")
+          assert "Audio 1 — Main Mix [default]" in Path("release-notes/v0.4.15.md").read_text(encoding="utf-8")
+          assert "**Windows 10/11 • Portable • Установка не требуется**" in Path("README_RU.md").read_text(encoding="utf-8")
+          print("Encoding validation passed")
+
+      - name: Commit repaired documentation
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md README_RU.md BUILD.md CHANGELOG.md LICENSES/README.md THIRD_PARTY_NOTICES.md THIRD_PARTY_VERSIONS.md release-notes/v0.4.15.md
+          git commit -m "Fix documentation encoding after v0.4.15 release"
+          git push
