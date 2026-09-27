@@ -2,6 +2,62 @@
 
 All notable changes to VFR FastCut are documented here.
 
+## 0.4.15
+
+### Audio timeline and mixing
+
+- Added a visual audio timeline aligned with the video timeline.
+- Added embedded and external audio track visualization.
+- Added live preview mixing for all tracks enabled with the timeline Play flag.
+- Main Mix is enabled by default and is exported as the first/default audio stream.
+- Separate stems remain available as an advanced option and are disabled by default.
+- Added per-track Volume, Fade In and Fade Out.
+- Added external audio positioning by dragging directly on the timeline.
+- Added non-destructive Trim In / Trim Out for external clips.
+- Added external clip duplication and copy deletion.
+- Added a persistent list of the 10 most recently used external audio files.
+- Added right-click audio settings for both embedded and external tracks.
+- Fixed external-audio project offsets in the exported Main Mix by applying real audio delay before `amix`.
+- Fixed preview channels re-enabled after seeking so they resume from the current playhead instead of project start.
+
+### Interface
+
+- Reorganized less-frequent commands into top menus.
+- Kept essential edit controls in the main window.
+- Added a context-sensitive Split / Remove Cut button.
+- Added a context-sensitive Delete / Restore button.
+- Added scrollable audio-track area without resizing the preview when tracks are added.
+- Added distinct colors for video, embedded audio and external audio.
+- Removed dark label overlays from audio clips and replaced them with outlined text.
+- Added compact export-complete dialog with expandable technical details.
+- `OK` is the default focused action in the export-complete dialog.
+
+### Preview and performance
+
+- Preserved the `QVideoSink в†’ QImage в†’ QWidget` Safe Preview architecture introduced in 0.2.36.
+- Removed obsolete preview diagnostic paths and the forced software video decoder override.
+- Hardware video decoding is available again while the compatible texture-conversion setting remains the default.
+- Reduced redundant `QAudioOutput.setVolume()` calls in the live preview mixer.
+
+### Export / FFmpeg
+
+- Added external audio demuxing for MP3, WAV, AAC, FLAC and OGG.
+- Added the limited audio decoder set needed for track processing.
+- Added the native AAC encoder for processed tracks and Main Mix.
+- Added `volume`, `afade`, `aformat`, `amix`, `alimiter` and `adelay` filters.
+- Video remains stream-copy during the normal lossless workflow.
+- Unmodified separate audio streams can remain stream-copy.
+- Main Mix is AAC stereo / 48 kHz and uses a limiter.
+- Strengthened `verify.ps1` license/configuration and audio-processing smoke tests.
+- FFmpeg `BUILD_INFO.txt` now records the exact MSYS2 runtime package versions used by the build.
+
+### Release / documentation
+
+- Updated README and built-in workflow documentation for the 0.4.x audio editor.
+- Updated the Windows release process and smoke-test checklist.
+- Updated third-party version records for Python 3.14.5, PyInstaller 6.21.0, PySide6/Qt 6.11.2 and FFmpeg 9.0.2.
+- Expanded the release checklist for Python, Qt/PySide6 and FFmpeg redistribution compliance.
+
 ## 0.2.36
 
 - Reworked video preview rendering to avoid the native `QVideoWidget` presentation path on Windows.

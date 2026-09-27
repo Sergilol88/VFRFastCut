@@ -1,0 +1,2 @@
+# Shell scripts must stay LF on Windows so MSYS2/Git Bash can execute them.
+*.sh text eol=lf
