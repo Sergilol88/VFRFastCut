@@ -227,7 +227,7 @@ Minimum release test:
 17. Audio-only MKA export.
 18. Selected-segment export.
 19. Cancel export.
-20. RU в†” EN switching and persistence.
+20. RU ↔ EN switching and persistence.
 21. F1 help.
 22. Compact export-complete dialog, `Details`, `Open folder`, and default focus on `OK`.
 23. Confirm the portable app still runs while `C:\ffmpeg` is unavailable.

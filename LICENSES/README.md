@@ -8,14 +8,14 @@ Exact component versions are recorded in [`../THIRD_PARTY_VERSIONS.md`](../THIRD
 
 Expected files in the portable package include:
 
-- `LGPL-3.0.txt` вЂ” Qt/PySide6 LGPL text.
-- `LGPL-2.1.txt` вЂ” project FFmpeg runtime.
-- `Python-3.14.5-LICENSE.txt` вЂ” copied from the exact Python installation used for the release build.
-- `MinGW-w64-libwinpthread-COPYING.txt` вЂ” package-provided text for `libwinpthread-1.dll`.
-- `GCC-COPYING.LIB.txt` вЂ” GCC runtime library license.
-- `GCC-COPYING.RUNTIME.txt` вЂ” GCC Runtime Library Exception.
-- `GCC-COPYING3.txt` вЂ” GPLv3 text distributed with the GCC runtime package.
-- `GCC-runtime-README.txt` вЂ” package-provided GCC runtime licensing/readme.
+- `LGPL-3.0.txt` — Qt/PySide6 LGPL text.
+- `LGPL-2.1.txt` — project FFmpeg runtime.
+- `Python-3.14.5-LICENSE.txt` — copied from the exact Python installation used for the release build.
+- `MinGW-w64-libwinpthread-COPYING.txt` — package-provided text for `libwinpthread-1.dll`.
+- `GCC-COPYING.LIB.txt` — GCC runtime library license.
+- `GCC-COPYING.RUNTIME.txt` — GCC Runtime Library Exception.
+- `GCC-COPYING3.txt` — GPLv3 text distributed with the GCC runtime package.
+- `GCC-runtime-README.txt` — package-provided GCC runtime licensing/readme.
 
 `GPL-3.0.txt` remains in the repository for historical release records and for third-party components that may be dual-licensed upstream. Its presence does not by itself mean that VFR FastCut is GPL-licensed.
 

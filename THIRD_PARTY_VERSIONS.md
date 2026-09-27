@@ -4,7 +4,7 @@ This file records third-party component versions used for packaged VFR FastCut b
 
 It complements `THIRD_PARTY_NOTICES.md` and the license texts in `LICENSES/`. It is not a substitute for the license terms that apply to redistributed third-party binaries.
 
-## VFR FastCut v0.4.15 вЂ” Windows x64
+## VFR FastCut v0.4.15 — Windows x64
 
 ### Build environment
 
@@ -81,7 +81,7 @@ ffmpeg-9.0.2-source.tar.xz
   - `LICENSES/GCC-COPYING3.txt`
   - `LICENSES/GCC-runtime-README.txt`
 
-## VFR FastCut v0.2.34 / v0.2.35 / v0.2.36 вЂ” Windows x64
+## VFR FastCut v0.2.34 / v0.2.35 / v0.2.36 — Windows x64
 
 ### Qt for Python / PySide6
 
@@ -101,7 +101,7 @@ ffmpeg-9.0.2-source.tar.xz
 
 The 0.2.x runtime was stream-copy focused and enabled fewer audio-processing components than v0.4.15.
 
-## VFR FastCut v0.2.33 вЂ” Windows x64
+## VFR FastCut v0.2.33 — Windows x64
 
 ### Qt for Python / PySide6
 
