@@ -2,25 +2,34 @@
 
 This directory contains license texts and package-provided notices for third-party components redistributed with packaged VFR FastCut builds.
 
-Exact third-party versions recorded for packaged releases are listed in [`../THIRD_PARTY_VERSIONS.md`](../THIRD_PARTY_VERSIONS.md).
+Exact component versions are recorded in [`../THIRD_PARTY_VERSIONS.md`](../THIRD_PARTY_VERSIONS.md).
 
-## Files used by current / historical releases
+## Current v0.4.15 release
 
-- `LGPL-3.0.txt` — Qt/PySide6 LGPL text used by current packaged builds.
-- `GPL-3.0.txt` — retained for historical v0.2.33 third-party components.
-- `LGPL-2.1.txt` — FFmpeg minimal runtime used by v0.2.34.
-- `MinGW-w64-libwinpthread-COPYING.txt` — package-provided license text for `libwinpthread-1.dll`.
-- `GCC-COPYING.LIB.txt` — package-provided GCC runtime license text.
-- `GCC-COPYING.RUNTIME.txt` — package-provided GCC Runtime Library Exception text.
-- `GCC-COPYING3.txt` — package-provided GPLv3 text included with the GCC runtime package.
-- `GCC-runtime-README.txt` — package-provided runtime licensing/readme file.
+Expected files in the portable package include:
 
-Before publishing a binary Release:
+- `LGPL-3.0.txt` вЂ” Qt/PySide6 LGPL text.
+- `LGPL-2.1.txt` вЂ” project FFmpeg runtime.
+- `Python-3.14.5-LICENSE.txt` вЂ” copied from the exact Python installation used for the release build.
+- `MinGW-w64-libwinpthread-COPYING.txt` вЂ” package-provided text for `libwinpthread-1.dll`.
+- `GCC-COPYING.LIB.txt` вЂ” GCC runtime library license.
+- `GCC-COPYING.RUNTIME.txt` вЂ” GCC Runtime Library Exception.
+- `GCC-COPYING3.txt` вЂ” GPLv3 text distributed with the GCC runtime package.
+- `GCC-runtime-README.txt` вЂ” package-provided GCC runtime licensing/readme.
 
-- record the exact versions/build identifiers in `THIRD_PARTY_VERSIONS.md`;
-- keep the applicable license texts with the portable package;
-- retain the build/source information required for the exact shipped third-party binaries.
+`GPL-3.0.txt` remains in the repository for historical release records and for third-party components that may be dual-licensed upstream. Its presence does not by itself mean that VFR FastCut is GPL-licensed.
+
+## Source availability
+
+License texts and source availability are separate obligations.
+
+For the v0.4.15 portable release, retain the corresponding source archives for the Qt/PySide6 components actually shipped and the exact project FFmpeg source archive. These source archives may be published as separate GitHub Release assets rather than placed inside the application ZIP. FFmpeg's IJG attribution is recorded in `../THIRD_PARTY_NOTICES.md`.
+
+Always audit the final `dist\VFRFastCut` directory before publication. If the binary inventory includes another copyleft dependency, add its notice/license/source information before releasing.
 
 Official references:
+
 - Qt for Python licensing: https://doc.qt.io/qtforpython-6/
+- Qt LGPL obligations: https://www.qt.io/development/open-source-lgpl-obligations
 - FFmpeg licensing: https://ffmpeg.org/doxygen/trunk/md_LICENSE.html
+- Python licensing: https://docs.python.org/3/license.html

@@ -3,6 +3,7 @@ set -euo pipefail
 
 FFMPEG_VERSION="9.0.2"
 SOURCE_URL="https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.xz"
+EXPECTED_SOURCE_SHA256="8c3850283eb25fa026482078a04051e0be17347b09ef81a0849bec15a96e002e"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORK_DIR="${SCRIPT_DIR}/work"
@@ -17,7 +18,7 @@ if [[ "${MSYSTEM:-}" != "UCRT64" ]]; then
   exit 1
 fi
 
-for tool in curl tar make gcc pkg-config nasm sha256sum; do
+for tool in curl tar make gcc pkg-config nasm sha256sum pacman; do
   if ! command -v "$tool" >/dev/null 2>&1; then
     echo "ERROR: missing required tool: $tool" >&2
     exit 1
@@ -30,6 +31,17 @@ mkdir -p "$WORK_DIR" "$INSTALL_DIR" "$RUNTIME_DIR"
 printf 'Downloading FFmpeg %s from official upstream...\n' "$FFMPEG_VERSION"
 curl -L --fail --retry 3 -o "$SRC_ARCHIVE" "$SOURCE_URL"
 SOURCE_SHA256="$(sha256sum "$SRC_ARCHIVE" | awk '{print $1}')"
+if [[ "$SOURCE_SHA256" != "$EXPECTED_SOURCE_SHA256" ]]; then
+  echo "ERROR: FFmpeg source SHA256 mismatch." >&2
+  echo "Expected: $EXPECTED_SOURCE_SHA256" >&2
+  echo "Actual:   $SOURCE_SHA256" >&2
+  exit 1
+fi
+
+LIBWINPTHREAD_PACKAGE="mingw-w64-ucrt-x86_64-libwinpthread"
+GCC_LIBS_PACKAGE="mingw-w64-ucrt-x86_64-gcc-libs"
+LIBWINPTHREAD_VERSION="$(pacman -Q "$LIBWINPTHREAD_PACKAGE" | awk '{print $2}')"
+GCC_LIBS_VERSION="$(pacman -Q "$GCC_LIBS_PACKAGE" | awk '{print $2}')"
 
 tar -xf "$SRC_ARCHIVE" -C "$WORK_DIR"
 cd "$SRC_DIR"
@@ -48,6 +60,28 @@ CONFIGURE_FLAGS=(
   "--disable-ffplay"
   "--disable-encoders"
   "--disable-decoders"
+  "--enable-encoder=aac"
+  "--enable-decoder=aac"
+  "--enable-decoder=mp3"
+  "--enable-decoder=flac"
+  "--enable-decoder=vorbis"
+  "--enable-decoder=opus"
+  "--enable-decoder=alac"
+  "--enable-decoder=ac3"
+  "--enable-decoder=eac3"
+  "--enable-decoder=wmav1"
+  "--enable-decoder=wmav2"
+  "--enable-decoder=pcm_u8"
+  "--enable-decoder=pcm_s16le"
+  "--enable-decoder=pcm_s24le"
+  "--enable-decoder=pcm_s32le"
+  "--enable-decoder=pcm_f32le"
+  "--enable-filter=volume"
+  "--enable-filter=afade"
+  "--enable-filter=aformat"
+  "--enable-filter=amix"
+  "--enable-filter=alimiter"
+  "--enable-filter=adelay"
   "--disable-hwaccels"
   "--disable-devices"
   "--disable-avdevice"
@@ -61,6 +95,11 @@ CONFIGURE_FLAGS=(
   "--enable-demuxer=mpegts"
   "--enable-demuxer=m4v"
   "--enable-demuxer=concat"
+  "--enable-demuxer=mp3"
+  "--enable-demuxer=wav"
+  "--enable-demuxer=aac"
+  "--enable-demuxer=flac"
+  "--enable-demuxer=ogg"
   "--disable-muxers"
   "--enable-muxer=mov"
   "--enable-muxer=mp4"
@@ -108,6 +147,10 @@ cp COPYING.LGPLv2.1 "$RUNTIME_DIR/"
   echo
   echo "Bundled MinGW runtime DLLs:"
   printf '  %s\n' "${RUNTIME_DLLS[@]}"
+  echo
+  echo "MSYS2 runtime packages:"
+  echo "  ${LIBWINPTHREAD_PACKAGE} ${LIBWINPTHREAD_VERSION}"
+  echo "  ${GCC_LIBS_PACKAGE} ${GCC_LIBS_VERSION}"
   echo
   echo "Configure flags:"
   printf '  %s\n' "${CONFIGURE_FLAGS[@]}"
