@@ -43,15 +43,36 @@ jobs:
               Path("release-notes/v0.4.15.md"),
           ]
 
+          # Python's cp1251 codec intentionally has no mapping for byte 0x98.
+          # The accidental Windows text conversion preserved that byte as U+0098,
+          # so handle it explicitly to make the reversal byte-exact.
+          def encode_broken_cp1251(text: str) -> bytes:
+              out = bytearray()
+              for ch in text:
+                  if ch == "\x98":
+                      out.append(0x98)
+                  else:
+                      out.extend(ch.encode("cp1251"))
+              return bytes(out)
+
+          def decode_broken_cp1251(data: bytes) -> str:
+              chars = []
+              for b in data:
+                  if b == 0x98:
+                      chars.append("\x98")
+                  else:
+                      chars.append(bytes((b,)).decode("cp1251"))
+              return "".join(chars)
+
           for path in paths:
               original = path.read_text(encoding="utf-8")
               try:
-                  repaired = original.encode("cp1251").decode("utf-8")
+                  repaired = encode_broken_cp1251(original).decode("utf-8")
               except (UnicodeEncodeError, UnicodeDecodeError) as exc:
                   raise SystemExit(f"Encoding repair failed for {path}: {exc}")
 
-              # Verify this is a strict reversible single-pass repair, not a lossy rewrite.
-              if repaired.encode("utf-8").decode("cp1251") != original:
+              # Verify a strict reversible single-pass repair, not a lossy rewrite.
+              if decode_broken_cp1251(repaired.encode("utf-8")) != original:
                   raise SystemExit(f"Round-trip verification failed for {path}")
 
               path.write_text(repaired, encoding="utf-8", newline="\n")
@@ -73,7 +94,7 @@ jobs:
               Path("release-notes/v0.4.15.md"),
           ]
 
-          suspicious = ("вЂ", "в†", "в–", "Р ", "РЎ", "РЈ", "Р°", "СЃ", "С‚")
+          suspicious = ("вЂ", "в†", "в–", "Р ", "РЎ", "РЈ", "Р°", "СЃ", "С‚", "\x98")
           leftovers = []
           for path in paths:
               text = path.read_text(encoding="utf-8")
