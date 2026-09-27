@@ -34,7 +34,7 @@ All notable changes to VFR FastCut are documented here.
 
 ### Preview and performance
 
-- Preserved the `QVideoSink в†’ QImage в†’ QWidget` Safe Preview architecture introduced in 0.2.36.
+- Preserved the `QVideoSink → QImage → QWidget` Safe Preview architecture introduced in 0.2.36.
 - Removed obsolete preview diagnostic paths and the forced software video decoder override.
 - Hardware video decoding is available again while the compatible texture-conversion setting remains the default.
 - Reduced redundant `QAudioOutput.setVolume()` calls in the live preview mixer.

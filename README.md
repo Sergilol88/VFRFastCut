@@ -1,8 +1,8 @@
 # VFR FastCut
 
-[Р СѓСЃСЃРєР°СЏ РІРµСЂСЃРёСЏ](README_RU.md)
+[Русская версия](README_RU.md)
 
-**Windows 10/11 вЂў Portable вЂў No installation required**
+**Windows 10/11 • Portable • No installation required**
 
 **VFR FastCut** is a lightweight Windows utility for fast VFR video cutting with lossless video stream-copy and a practical audio timeline.
 
@@ -19,7 +19,7 @@ VFR FastCut does **not** require installation.
 
 Python, PySide6/Qt and the project FFmpeg runtime are included in the portable build.
 
-> **Windows SmartScreen:** unsigned builds may show a warning on first launch. If you trust the release downloaded from this repository, choose **More info в†’ Run anyway**.
+> **Windows SmartScreen:** unsigned builds may show a warning on first launch. If you trust the release downloaded from this repository, choose **More info → Run anyway**.
 
 ## Features
 
@@ -32,7 +32,7 @@ Python, PySide6/Qt and the project FFmpeg runtime are included in the portable b
 - Undo / Redo.
 - Export all kept segments or only the selected segment.
 - Video-only export is supported.
-- Safe preview path based on `QVideoSink в†’ QImage в†’ QWidget`, avoiding the native video surface that caused black-screen / VRR issues in earlier builds.
+- Safe preview path based on `QVideoSink → QImage → QWidget`, avoiding the native video surface that caused black-screen / VRR issues in earlier builds.
 
 ### Audio
 
@@ -103,7 +103,7 @@ Audio-only and processed audio operations use audio packet / filter timing and a
 
 ## Audio timeline basics
 
-- Click `в–¶ / в–·` beside an audio row to include or exclude that track from the preview/Main Mix.
+- Click `▶ / ▷` beside an audio row to include or exclude that track from the preview/Main Mix.
 - Drag an external audio block to change its project position.
 - Drag the left or right edge of an external block to trim it.
 - Right-click an audio block for Volume / Fade controls.
@@ -125,7 +125,7 @@ Tracks disabled in the available-audio selection are hidden from the timeline.
 | Delete / restore selected segment | `Delete` |
 | Undo / Redo | `Ctrl+Z` / `Ctrl+Y` |
 | Previous / next cut | `Q` / `E` |
-| Seek В±1 second | `в†ђ` / `в†’` |
+| Seek ±1 second | `←` / `→` |
 | Help | `F1` |
 | Timeline zoom | `Ctrl + mouse wheel` |
 | Timeline scroll | Mouse wheel |
@@ -134,7 +134,7 @@ Tracks disabled in the available-audio selection are hidden from the timeline.
 
 On first launch, VFR FastCut uses Russian when Windows reports a Russian locale; otherwise English is used.
 
-The language can be changed from **View в†’ Language** and is saved between launches.
+The language can be changed from **View → Language** and is saved between launches.
 
 ## Running from source
 

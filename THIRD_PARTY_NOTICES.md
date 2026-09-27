@@ -4,7 +4,7 @@ VFR FastCut's own source code is licensed under the MIT License. Packaged Window
 
 This file is a practical redistribution record, not legal advice. Exact versions used for packaged releases are recorded in `THIRD_PARTY_VERSIONS.md`.
 
-## Python runtime вЂ” v0.4.15
+## Python runtime — v0.4.15
 
 The PyInstaller portable build contains the CPython runtime used to build the application.
 
@@ -18,7 +18,7 @@ Official licensing information:
 - https://docs.python.org/3/license.html
 - https://www.python.org/psf/about/legal-and-policies/
 
-## Qt for Python / PySide6 and Qt вЂ” v0.4.15
+## Qt for Python / PySide6 and Qt — v0.4.15
 
 VFR FastCut uses PySide6 / Qt for Python and Qt modules including QtCore, QtGui, QtWidgets and QtMultimedia.
 
@@ -38,7 +38,7 @@ Official licensing information:
 - https://www.qt.io/development/open-source-lgpl-obligations
 - https://www.qt.io/faq/qt-open-source-licensing
 
-## FFmpeg / FFprobe вЂ” v0.4.15
+## FFmpeg / FFprobe — v0.4.15
 
 VFR FastCut invokes its project FFmpeg / FFprobe runtime as external command-line programs.
 
@@ -75,7 +75,7 @@ Official FFmpeg licensing information:
 - https://ffmpeg.org/legal.html
 - https://ffmpeg.org/doxygen/trunk/md_LICENSE.html
 
-## MinGW runtime DLLs used by project FFmpeg вЂ” v0.4.15
+## MinGW runtime DLLs used by project FFmpeg — v0.4.15
 
 The custom FFmpeg runtime bundles:
 
@@ -123,7 +123,7 @@ Before publishing a release, run `tools/release/audit-portable.ps1` against `dis
 
 Qt Multimedia can introduce multimedia backend dependencies. If FFmpeg-family libraries are present outside VFR FastCut's own `ffmpeg\bin`, treat that runtime as a separate redistributed dependency and retain the corresponding license/source information.
 
-## Historical FFmpeg runtime вЂ” v0.2.33
+## Historical FFmpeg runtime — v0.2.33
 
 The v0.2.33 Windows x64 package used:
 
