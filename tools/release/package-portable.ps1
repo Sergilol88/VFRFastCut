@@ -21,7 +21,7 @@ Push-Location $RepoRoot
 try {
     if ([string]::IsNullOrWhiteSpace($Version)) {
         $SourceFile = Join-Path $RepoRoot "vfr_fastcut.py"
-        if (-not (Test-Path $SourceFile)) {
+        if (-not (Test-Path $SourceFile -PathType Leaf)) {
             throw "Could not determine application version: $SourceFile was not found."
         }
 
@@ -33,10 +33,10 @@ try {
         $Version = $VersionMatch.Groups[1].Value
     }
 
-    if (-not (Test-Path $DistDir)) {
+    if (-not (Test-Path $DistDir -PathType Container)) {
         throw "Portable directory not found: $DistDir"
     }
-    if (-not (Test-Path $RuntimeDir)) {
+    if (-not (Test-Path $RuntimeDir -PathType Container)) {
         throw "FFmpeg runtime directory not found: $RuntimeDir`nBuild it first with tools\ffmpeg-minimal\build-msys2-ucrt64.sh."
     }
 
@@ -60,7 +60,7 @@ try {
 
     $missingRuntimeFiles = @()
     foreach ($name in $requiredRuntimeFiles) {
-        if (-not (Test-Path (Join-Path $RuntimeDir $name))) {
+        if (-not (Test-Path (Join-Path $RuntimeDir $name) -PathType Leaf)) {
             $missingRuntimeFiles += $name
         }
     }
@@ -79,6 +79,12 @@ try {
 
     $requiredPortableFiles = @(
         "VFRFastCut.exe",
+        "LICENSE",
+        "THIRD_PARTY_NOTICES.md",
+        "THIRD_PARTY_VERSIONS.md",
+        "LICENSES\LGPL-2.1.txt",
+        "LICENSES\LGPL-3.0.txt",
+        "LICENSES\Python-3.14.5-LICENSE.txt",
         "ffmpeg\bin\ffmpeg.exe",
         "ffmpeg\bin\ffprobe.exe",
         "ffmpeg\bin\BUILD_INFO.txt",
@@ -87,7 +93,7 @@ try {
 
     $missingPortableFiles = @()
     foreach ($rel in $requiredPortableFiles) {
-        if (-not (Test-Path (Join-Path $DistDir $rel))) {
+        if (-not (Test-Path (Join-Path $DistDir $rel) -PathType Leaf)) {
             $missingPortableFiles += $rel
         }
     }
@@ -108,7 +114,7 @@ try {
     }
 
     $AuditScript = Join-Path $RepoRoot "tools\release\audit-portable.ps1"
-    if (Test-Path $AuditScript) {
+    if (Test-Path $AuditScript -PathType Leaf) {
         Write-Host "Running portable audit..." -ForegroundColor Cyan
         & $AuditScript -DistDir $DistDir
     }
@@ -141,10 +147,14 @@ try {
         "$DistLeaf/ffmpeg/bin/ffprobe.exe"
     )
 
-    $normalizedEntries = $archiveEntries | ForEach-Object { ($_ -replace '\\', '/').TrimStart('./') }
+    $trimChars = [char[]]"./"
+    $normalizedEntries = $archiveEntries | ForEach-Object {
+        ($_ -replace '\\', '/').TrimStart($trimChars)
+    }
+
     $missingArchiveEntries = @()
     foreach ($entry in $requiredArchiveEntries) {
-        $normalizedRequired = ($entry -replace '\\', '/').TrimStart('./')
+        $normalizedRequired = ($entry -replace '\\', '/').TrimStart($trimChars)
         if ($normalizedEntries -notcontains $normalizedRequired) {
             $missingArchiveEntries += $entry
         }
