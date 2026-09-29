@@ -39,6 +39,7 @@ if ($missing.Count -gt 0) {
     Write-Host "Missing expected release files:" -ForegroundColor Red
     $missing | ForEach-Object { Write-Host "  $_" -ForegroundColor Red }
     Write-Host
+    throw "Portable audit failed because required release files are missing."
 } else {
     Write-Host "Expected license/runtime files: OK" -ForegroundColor Green
     Write-Host
@@ -93,7 +94,6 @@ if (Test-Path $buildInfo) {
     Get-Content $buildInfo | ForEach-Object { Write-Host "  $_" }
     Write-Host
 }
-
 
 Write-Host "Third-party binary candidates requiring review:"
 $thirdPartyPattern = "^(avcodec|avformat|avutil|avfilter|swresample|swscale|postproc|libcrypto|libssl|libgcc|libstdc\+\+|libwinpthread|openh264|zlib|libpng|jpeg|tiff|webp).+\.(dll|pyd)$"
