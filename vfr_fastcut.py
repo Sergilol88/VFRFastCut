@@ -54,7 +54,6 @@ from PySide6.QtWidgets import (
     QSizePolicy,
     QFrame,
     QStatusBar,
-    QStackedWidget,
     QTextBrowser,
     QVBoxLayout,
     QWidget,
@@ -1752,29 +1751,49 @@ class TimelineWidget(QWidget):
         if self.keyframes:
             first = bisect.bisect_left(self.keyframes, vis_start - 1e-9)
             last = bisect.bisect_right(self.keyframes, vis_end + 1e-9)
+            visible_count = max(0, last - first)
 
-            # Include one neighbour outside each side when available.  It makes
-            # the spacing estimate stable while panning near viewport edges.
-            spacing_first = max(0, first - 1)
-            spacing_last = min(len(self.keyframes), last + 1)
-            spacing_keyframes = self.keyframes[spacing_first:spacing_last]
-            visible_keyframes = self.keyframes[first:last]
+            # A dense viewport can be rejected without slicing and sorting
+            # thousands of timestamps on every playhead repaint. If there are
+            # more markers than the lane can physically fit at the configured
+            # minimum spacing, drawing the complete truthful keyframe set would
+            # necessarily overlap, so hide it immediately.
+            marker_capacity = max(
+                2,
+                int(width / max(1.0, self.keyframe_min_spacing_px)) + 2,
+            )
+            show_keyframes = 0 < visible_count <= marker_capacity
+            visible_keyframes = (
+                self.keyframes[first:last] if show_keyframes else []
+            )
 
-            show_keyframes = bool(visible_keyframes)
-            if show_keyframes and len(spacing_keyframes) > 1:
-                px_per_second = width / max(0.001, self.visible_duration)
-                gaps_px = sorted(
-                    max(0.0, b - a) * px_per_second
-                    for a, b in zip(spacing_keyframes, spacing_keyframes[1:])
-                    if b > a
-                )
-                if gaps_px:
-                    # Median spacing is robust to an occasional unusually close
-                    # scene-change keyframe while still hiding a dense GOP wall.
-                    representative_spacing_px = gaps_px[len(gaps_px) // 2]
-                    show_keyframes = (
-                        representative_spacing_px >= self.keyframe_min_spacing_px
+            if show_keyframes:
+                # Include one neighbour outside each side when available.  It
+                # keeps the actual-spacing estimate stable while panning near
+                # viewport edges. The hard density cap above keeps this slice
+                # small even on multi-hour VODs.
+                spacing_first = max(0, first - 1)
+                spacing_last = min(len(self.keyframes), last + 1)
+                spacing_keyframes = self.keyframes[spacing_first:spacing_last]
+
+                if len(spacing_keyframes) > 1:
+                    px_per_second = width / max(0.001, self.visible_duration)
+                    gaps_px = sorted(
+                        max(0.0, b - a) * px_per_second
+                        for a, b in zip(
+                            spacing_keyframes,
+                            spacing_keyframes[1:],
+                        )
+                        if b > a
                     )
+                    if gaps_px:
+                        # Median spacing is robust to an occasional unusually
+                        # close scene-change keyframe.
+                        representative_spacing_px = gaps_px[len(gaps_px) // 2]
+                        show_keyframes = (
+                            representative_spacing_px
+                            >= self.keyframe_min_spacing_px
+                        )
 
             if show_keyframes:
                 lane_top = self.RULER_H + 1
@@ -3881,6 +3900,7 @@ class MainWindow(QMainWindow):
         self.keyframes: list[float] = []
         self._edited_preview_ranges: list[tuple[float, float]] = []
         self._edited_preview_ranges_exact = False
+        self._edited_preview_has_deletions = False
         self._edited_preview_jump_active = False
         self._keyframe_scan_generation = 0
         self._keyframe_scan_cancel_event: Optional[threading.Event] = None
@@ -4669,6 +4689,7 @@ class MainWindow(QMainWindow):
         self.timeline.set_keyframes([])
         self._edited_preview_ranges.clear()
         self._edited_preview_ranges_exact = False
+        self._edited_preview_has_deletions = False
         self.selected_index = -1
         self.undo_stack.clear()
         self.redo_stack.clear()
@@ -5011,6 +5032,9 @@ class MainWindow(QMainWindow):
 
     def _refresh_edited_preview_ranges(self):
         """Rebuild playable source-time ranges for edited-result preview."""
+        self._edited_preview_has_deletions = any(
+            seg.deleted for seg in self.segments
+        )
         kept = kept_ranges_from_segments(self.segments)
         if not kept:
             self._edited_preview_ranges = []
@@ -5033,7 +5057,7 @@ class MainWindow(QMainWindow):
             self._edited_preview_ranges_exact = False
 
     def _edited_preview_enabled(self) -> bool:
-        return any(seg.deleted for seg in self.segments)
+        return self._edited_preview_has_deletions
 
     def _is_edited_preview_playable(self, position: float) -> bool:
         if not self._edited_preview_enabled():
@@ -5264,7 +5288,8 @@ class MainWindow(QMainWindow):
         self,
         position: float,
     ) -> Optional[tuple[float, float]]:
-        for start, end in kept_ranges_from_segments(self.segments):
+        """Return the effective range used by Edited Preview and export."""
+        for start, end in self._edited_preview_ranges:
             if start - 0.001 <= position <= end + 0.001:
                 return start, end
         return None
