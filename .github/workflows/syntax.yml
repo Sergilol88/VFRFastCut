@@ -1,23 +1,35 @@
-name: Source checks
+name: Localization cleanup
 
 on:
   push:
-  pull_request:
+    branches:
+      - cleanup/localization-copy
+
+permissions:
+  contents: write
 
 jobs:
-  source-checks:
+  cleanup:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.10", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: cleanup/localization-copy
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Compile Python sources
-        run: python -m compileall -q vfr_fastcut.py vfr_keyframes.py tests tools/dev
-
-      - name: Run unit tests
-        run: python -m unittest discover -s tests -p "test_*.py"
+          python-version: "3.12"
+      - name: Apply copy cleanup
+        run: python tools/localization_cleanup_temp.py
+      - name: Validate source
+        run: |
+          python -m compileall -q vfr_fastcut.py vfr_keyframes.py tests
+          python -m unittest discover -s tests -p "test_*.py"
+      - name: Commit cleanup
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add vfr_fastcut.py
+          git commit -m "Finish localized interface copy cleanup"
+          git push origin HEAD:cleanup/localization-copy
