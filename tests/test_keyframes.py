@@ -45,7 +45,7 @@ class KeyframeSnapTests(unittest.TestCase):
             self.keyframes,
             self.duration,
         )
-        self.assertEqual(ranges, [(6.0, 6.0)] if False else [])
+        self.assertEqual(ranges, [])
 
 
 if __name__ == "__main__":
