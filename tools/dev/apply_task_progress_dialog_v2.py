@@ -2,14 +2,14 @@
 """Robust wrapper for the 0.5.x Task Progress Dialog integration helper.
 
 The original helper removes the legacy progress-bar reset by matching a line
-that also occurs inside set_export_busy().  This wrapper narrows that one
+that also occurs inside set_export_busy(). This wrapper narrows that one
 replacement to _clear_project_state() and delegates every other transformation
 to the original helper unchanged.
 """
 
 from __future__ import annotations
 
-from tools.dev import apply_task_progress_dialog as impl
+import apply_task_progress_dialog as impl
 
 
 _original_replace_once = impl.replace_once
