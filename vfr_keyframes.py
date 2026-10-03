@@ -264,3 +264,47 @@ def snap_ranges_to_keyframes(
             snapped_ranges.append((snapped_start, snapped_end))
 
     return snapped_ranges, max_shift
+
+
+def resolve_preview_playback_position(
+    ranges: list[tuple[float, float]],
+    position: float,
+    *,
+    tolerance: float = 0.003,
+) -> tuple[int, Optional[float]]:
+    """Resolve an edited-preview position against effective kept ranges.
+
+    Returns ``(range_index, jump_target)``:
+    - ``range_index >= 0`` and ``jump_target is None`` means the position is
+      already inside a playable range;
+    - ``range_index == -1`` with a numeric ``jump_target`` means playback is in
+      a removed gap and should jump to the next kept range;
+    - ``(-1, None)`` means there is no playable range at or after the position.
+
+    The end boundary is treated as exclusive (with a tiny tolerance) so the
+    preview skips immediately once it reaches the same snapped end boundary
+    used by lossless export.
+    """
+    if not ranges:
+        return -1, None
+
+    position = float(position)
+    tolerance = max(0.0, float(tolerance))
+    starts = [start for start, _end in ranges]
+
+    index = bisect.bisect_right(starts, position + tolerance) - 1
+    if index >= 0:
+        start, end = ranges[index]
+        if start - tolerance <= position < end - tolerance:
+            return index, None
+
+    next_index = bisect.bisect_right(starts, position + tolerance)
+    if next_index < len(ranges):
+        return -1, ranges[next_index][0]
+
+    # ``bisect_right`` returns zero when position is clearly before the first
+    # range, but keep this explicit for readability and boundary regressions.
+    if position < ranges[0][0] - tolerance:
+        return -1, ranges[0][0]
+
+    return -1, None
