@@ -3128,12 +3128,26 @@ class LosslessExporter:
 
         external_tracks = self._required_external_tracks()
 
+        # If the only requested processing is on embedded tracks and there is
+        # no Main Mix/external stream to assemble afterward, the prepared
+        # primary file already *is* the finished range. Write it directly and
+        # skip an otherwise redundant second full remux pass.
+        if (
+            not self._has_main_mix()
+            and not external_tracks
+            and self._has_primary_streams()
+        ):
+            self._build_primary_range_part(output, start, end)
+            return
+
         primary_path: Optional[Path] = None
         primary_is_original = False
         if self._has_primary_streams():
-            if start <= 0.001 and not self._has_embedded_audio_processing():
-                # A range that begins at project zero can use the source file
-                # directly when its embedded streams need no processing.
+            if not self._has_embedded_audio_processing():
+                # Direct-source processed-export fast path (0.5.0 stabilization).
+                # The edited range boundaries are already keyframe-snapped when
+                # video is present, so the original source can feed the final
+                # assembly directly even for non-zero ranges.
                 primary_path = Path(self.input_path)
                 primary_is_original = True
             else:
@@ -3164,6 +3178,8 @@ class LosslessExporter:
         primary_input_index: Optional[int] = None
         if primary_path is not None:
             primary_input_index = input_index
+            if primary_is_original and start > 0.001:
+                cmd += ["-ss", f"{start:.6f}"]
             cmd += ["-i", str(primary_path)]
             input_index += 1
 
@@ -3195,6 +3211,8 @@ class LosslessExporter:
             cmd += ["-t", f"{duration:.6f}", "-c", "copy"]
             if primary_input_index is not None:
                 cmd += ["-map_metadata", str(primary_input_index)]
+            if primary_is_original and start > 0.001:
+                cmd += ["-avoid_negative_ts", "make_zero"]
             cmd += [str(output)]
             self._run(cmd)
             return
@@ -3284,6 +3302,8 @@ class LosslessExporter:
         if primary_input_index is not None:
             cmd += ["-map_metadata", str(primary_input_index)]
         cmd += self._main_mix_metadata_args()
+        if primary_is_original and start > 0.001:
+            cmd += ["-avoid_negative_ts", "make_zero"]
         cmd += [str(output)]
         self._run(cmd)
 
