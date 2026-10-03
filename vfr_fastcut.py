@@ -352,7 +352,7 @@ UI_TEXT = {
         "audio_boundaries": "Audio boundaries: packet-based, without video keyframe snapping.",
         "copying_file": "Copying file without re-encoding…",
         "done": "Done.",
-        "direct_remux_note": "Lossless stream copy finished.\nNo segments were deleted — direct remux completed without temporary parts.",
+        "direct_remux_note": "Lossless stream copy finished.\nNo segments were deleted. Direct remux completed without temporary parts.",
         "no_ranges": "There are no segments to export.",
         "full_range_note": "Lossless stream copy finished.\nThe selected full range was exported.",
         "no_ranges_after_snap": "No exportable segments remain after keyframe snapping.",
@@ -368,7 +368,7 @@ UI_TEXT = {
         "language_changed": "Interface language changed to English.",
     },
     "ru": {
-        "timeline_empty": "Открой видео, чтобы появился таймлайн",
+        "timeline_empty": "Откройте видео, чтобы появился таймлайн",
         "selection_none": "Фрагмент не выбран",
         "open_video": "Открыть видео [Ctrl+O]",
         "reset": "Сброс [Ctrl+N]",
@@ -394,11 +394,11 @@ UI_TEXT = {
         "audio_tracks": "Аудиодорожки…",
         "audio_tracks_count": "Аудиодорожки {selected}/{total}…",
         "audio_tracks_tip": "Выбрать аудиодорожки для экспорта ({selected}/{total}).",
-        "audio_tracks_no_file_tip": "Открой видео перед настройкой аудиодорожек.",
+        "audio_tracks_no_file_tip": "Откройте видео перед настройкой аудиодорожек.",
         "audio_tracks_none_tip": "Встроенных дорожек нет. Можно добавить внешнее аудио.",
         "audio_tracks_unavailable_tip": "Метаданные встроенного аудио недоступны. Внешнее аудио всё равно можно добавить.",
         "audio_tracks_title": "Аудиодорожки",
-        "audio_tracks_intro": "Выбери, какие аудиодорожки доступны на таймлайне проекта и участвуют в экспорте звука. Флаг Play слева от каждой видимой дорожки включает или исключает её из live preview и Main Mix. Внешнее аудио, Main Mix/stems, громкость и Fade находятся в верхнем меню «Аудио».",
+        "audio_tracks_intro": "Выберите, какие аудиодорожки доступны на таймлайне проекта и участвуют в экспорте звука. Флаг Play слева от каждой видимой дорожки включает или исключает её из live preview и Main Mix. Внешнее аудио, Main Mix/stems, громкость и Fade находятся в верхнем меню «Аудио».",
         "audio_track_number": "Дорожка {number}",
         "audio_track_channels": "{count} кан.",
         "audio_track_default": "по умолчанию",
@@ -415,8 +415,8 @@ UI_TEXT = {
         "audio_file_filter": "Аудио/медиа (*.wav *.mp3 *.m4a *.aac *.flac *.ogg *.opus *.mka *.mp4 *.mov *.mkv *.webm);;Все файлы (*.*)",
         "external_audio_no_streams": "В выбранном файле нет аудиопотоков.",
         "external_audio_probe_failed": "Не удалось прочитать аудиопотоки выбранного файла.\n\n{error}",
-        "external_audio_duplicate": "Этот аудиофайл уже добавлен в проект. Если звук нужен ещё раз, используй «Создать копию» у его блока на таймлайне.",
-        "external_audio_is_source": "Это текущий исходный видеофайл. Используй его встроенные аудиодорожки.",
+        "external_audio_duplicate": "Этот аудиофайл уже добавлен в проект. Если звук нужен ещё раз, используйте «Создать копию» у его блока на таймлайне.",
+        "external_audio_is_source": "Это текущий исходный видеофайл. Используйте его встроенные аудиодорожки.",
         "audio_tracks_select_all": "Выбрать все",
         "audio_tracks_select_none": "Снять все",
         "audio_tracks_apply": "Применить",
@@ -429,7 +429,7 @@ UI_TEXT = {
         "audio_keep_stems_tip": "Сохранить выбранные дорожки отдельными аудиопотоками после Main Mix. Неизменённые stems остаются stream-copy, обработанные — AAC.",
         "audio_timeline": "Аудиодорожки",
         "audio_timeline_empty": "Нет выбранных аудиодорожек для отображения",
-        "audio_timeline_drag_tip": "Нажми флаг Play слева, чтобы включить или исключить дорожку из live preview и Main Mix. Перетаскивай внешний аудиоблок для изменения положения; тяни его левый или правый край для обрезки.",
+        "audio_timeline_drag_tip": "Нажмите флаг Play слева, чтобы включить или исключить дорожку из live preview и Main Mix. Перетаскивайте внешний аудиоблок для изменения положения; тяните его левый или правый край для обрезки.",
         "audio_track_setting_status": "{setting} изменён для {track}.",
         "audio_track_processing_reset_status": "Громкость и Fade сброшены для {track}.",
         "audio_timeline_offset_status": "Положение внешнего аудио изменено.",
@@ -497,7 +497,7 @@ UI_TEXT = {
         "cannot_reset_export": "Нельзя сбросить проект во время экспорта.",
         "open_dialog": "Открыть видео",
         "video_filter": "Видео (*.mp4 *.mov *.m4v *.mkv *.webm *.ts *.mts *.m2ts *.avi *.flv *.mpg *.mpeg *.wmv);;Все файлы (*.*)",
-        "wait_export": "Дождись окончания экспорта или отмени его.",
+        "wait_export": "Дождитесь окончания экспорта или отмените его.",
         "file_not_found": "Файл не найден.",
         "unsupported_type": "Этот тип файла пока не поддерживается.\n\nПоддерживаются: MP4, MOV, M4V, MKV, WebM, TS, MTS, M2TS, AVI, FLV, MPG/MPEG, WMV.",
         "already_open": "Этот файл уже открыт: {name}",
@@ -511,17 +511,17 @@ UI_TEXT = {
         "segment_info": "Фрагмент {number}: {start} → {end} ({duration}) • {state}",
         "playhead_boundary": "Playhead уже находится на границе фрагмента.",
         "split_status": "Разрез: {time}",
-        "no_cut_at_playhead": "Под playhead нет разреза. Используй Q/E, чтобы точно перейти на разрез.",
-        "cut_state_mismatch": "Этот разрез разделяет оставляемый и удалённый фрагменты. Сначала восстанови или удали обе стороны одинаково.",
+        "no_cut_at_playhead": "Под playhead нет разреза. Используйте Q/E, чтобы точно перейти на разрез.",
+        "cut_state_mismatch": "Этот разрез разделяет оставляемый и удалённый фрагменты. Сначала восстановите или удалите обе стороны одинаково.",
         "cut_removed_status": "Разрез убран: {time}",
         "marked_deleted": "Фрагмент помечен на удаление.",
         "restored": "Фрагмент восстановлен.",
-        "preview_nothing_to_play": "Все видеофрагменты удалены — воспроизводить нечего.",
+        "preview_nothing_to_play": "Все видеофрагменты удалены: воспроизводить нечего.",
         "help_title": "Справка",
         "close": "Закрыть",
         "tools_missing_both": "ffmpeg.exe и ffprobe.exe",
         "tools_missing_ffmpeg": "ffmpeg.exe",
-        "tools_missing": "Не найден(ы) {missing}.\n\nПоложи файлы в:\n  ffmpeg\\bin\\ рядом с программой\nили используй C:\\ffmpeg\\bin\\.",
+        "tools_missing": "Не найден(ы) {missing}.\n\nПоместите файлы в:\n  ffmpeg\\bin\\ рядом с программой\nили используйте C:\\ffmpeg\\bin\\.",
         "cannot_overwrite_source": "Нельзя перезаписывать исходный файл.",
         "file_filter_av": "MP4 (*.mp4);;MOV (*.mov);;MKV (*.mkv);;Все файлы (*.*)",
         "export_selected_dialog": "Экспорт выбранного фрагмента",
@@ -551,7 +551,7 @@ UI_TEXT = {
         "audio_boundaries": "Границы аудио: по аудиопакетам, без keyframe-привязки.",
         "copying_file": "Копирую файл без перекодирования…",
         "done": "Готово.",
-        "direct_remux_note": "Lossless stream copy завершён.\nФрагменты не удалялись — выполнена прямая перепаковка без временных частей.",
+        "direct_remux_note": "Lossless stream copy завершён.\nФрагменты не удалялись. Выполнена прямая перепаковка без временных частей.",
         "no_ranges": "Нет фрагментов для экспорта.",
         "full_range_note": "Lossless stream copy завершён.\nЭкспортирован выбранный полный диапазон.",
         "no_ranges_after_snap": "После привязки к keyframes не осталось экспортируемых фрагментов.",
@@ -573,10 +573,10 @@ HELP_HTML = {
 <h2>VFR FastCut — Help</h2>
 <h3>Opening and project</h3>
 <ul>
-  <li><b>Open video [Ctrl+O]</b> — select a video file.</li>
+  <li><b>Open video [Ctrl+O]</b>: select a video file.</li>
   <li><b>Supported input containers:</b> MP4, MOV, M4V, MKV, WebM, TS/MTS/M2TS, AVI, FLV, MPG/MPEG, WMV.</li>
-  <li><b>Drag & Drop</b> — drop a supported video almost anywhere in the window.</li>
-  <li><b>Reset [Ctrl+N]</b> — clear the current project.</li>
+  <li><b>Drag & Drop</b>: drop a supported video almost anywhere in the window.</li>
+  <li><b>Reset [Ctrl+N]</b>: clear the current project.</li>
   <li>Opening a different file automatically resets the current project.</li>
   <li>Opening the same file again preserves cuts and Undo history.</li>
   <li>Less-frequent commands are grouped in the top <b>File / Edit / Playback / Audio / View / Help</b> menus.</li>
@@ -584,28 +584,28 @@ HELP_HTML = {
 </ul>
 <h3>Playback and navigation</h3>
 <ul>
-  <li><b>Play / Pause [Space]</b> — plays the edited result: deleted gaps are skipped using the same effective keyframe boundaries as lossless export. Manual seeking can still inspect deleted source frames while paused.</li>
-  <li><b>Mute [M]</b> — mute preview audio.</li>
-  <li><b>← / →</b> — seek by one second.</li>
-  <li><b>Q / E</b> — previous / next cut. Falls back to the start / end of the video.</li>
+  <li><b>Play / Pause [Space]</b>: plays the edited result: deleted gaps are skipped using the same effective keyframe boundaries as lossless export. Manual seeking can still inspect deleted source frames while paused.</li>
+  <li><b>Mute [M]</b>: mute preview audio.</li>
+  <li><b>← / →</b>: seek by one second.</li>
+  <li><b>Q / E</b>: previous / next cut. Falls back to the start / end of the video.</li>
   <li>Click or drag the <b>upper time ruler</b> to seek / scrub.</li>
   <li>Click the <b>lower timeline track</b> to select a segment without moving the playhead.</li>
-  <li>Mouse wheel over the timeline — horizontal scroll.</li>
-  <li><b>Ctrl + wheel</b> — zoom around the cursor.</li>
+  <li>Use the mouse wheel over the timeline for horizontal scrolling.</li>
+  <li><b>Ctrl + wheel</b>: zoom around the cursor.</li>
 </ul>
 <h3>Editing</h3>
 <ul>
-  <li><b>Split [S]</b> — create a cut at the playhead.</li>
-  <li><b>Remove cut [Shift+S]</b> — merge the two adjacent segments when the playhead is exactly on a cut. Q/E can be used to jump to a cut.</li>
-  <li><b>Delete [Delete]</b> — exclude the selected segment from the main export.</li>
-  <li><b>Restore</b> — restore a deleted segment.</li>
-  <li><b>Undo [Ctrl+Z]</b> / <b>Redo [Ctrl+Y]</b> — undo / redo an edit.</li>
+  <li><b>Split [S]</b>: create a cut at the playhead.</li>
+  <li><b>Remove cut [Shift+S]</b>: merge the two adjacent segments when the playhead is exactly on a cut. Q/E can be used to jump to a cut.</li>
+  <li><b>Delete [Delete]</b>: exclude the selected segment from the main export.</li>
+  <li><b>Restore</b>: restore a deleted segment.</li>
+  <li><b>Undo [Ctrl+Z]</b> / <b>Redo [Ctrl+Y]</b>: undo / redo an edit.</li>
 </ul>
 <h3>Export</h3>
 <ul>
-  <li><b>Lossless Export</b> — export all kept segments; video remains stream-copied while Main Mix and other processed audio are encoded only when required.</li>
+  <li><b>Lossless Export</b>: export all kept segments; video remains stream-copied while Main Mix and other processed audio are encoded only when required.</li>
   <li><b>Performance:</b> unchanged audio is normally stream-copied and exports very quickly. Volume/Fade or a real multi-track Main Mix requires audio decoding, filtering/mixing and AAC encoding, so long recordings can take noticeably longer while video still remains stream-copied.</li>
-  <li><b>Export segment</b> — save only the selected segment.</li>
+  <li><b>Export segment</b>: save only the selected segment.</li>
   <li>The selected segment can be exported even if it is marked for deletion in the main edit.</li>
   <li><b>Export video</b> and <b>Export audio</b> are enabled by default.</li>
   <li><b>Audio → Available audio tracks…</b> controls which embedded/external tracks are visible on the project timeline and available for audio export. Every visible track is listed directly in the <b>Audio</b> menu with its own Volume/Fade submenu. External clips can be duplicated from their submenu or by right-clicking the clip on the timeline. A duplicated clip can also be removed with <b>Delete copy</b> from its right-click menu.</li>
@@ -644,10 +644,10 @@ HELP_HTML = {
 <h2>VFR FastCut — справка</h2>
 <h3>Открытие и проект</h3>
 <ul>
-  <li><b>Открыть видео [Ctrl+O]</b> — выбрать видео через Проводник.</li>
+  <li><b>Открыть видео [Ctrl+O]</b>: выберите видео через Проводник.</li>
   <li><b>Поддерживаемые входные контейнеры:</b> MP4, MOV, M4V, MKV, WebM, TS/MTS/M2TS, AVI, FLV, MPG/MPEG, WMV.</li>
-  <li><b>Drag & Drop</b> — видео можно бросить почти в любую область окна.</li>
-  <li><b>Сброс [Ctrl+N]</b> — очистить текущий проект и начать заново.</li>
+  <li><b>Drag & Drop</b>: перетащите видео почти в любую область окна.</li>
+  <li><b>Сброс [Ctrl+N]</b>: очистите текущий проект и начните заново.</li>
   <li>Если открыть другой файл, текущий проект сбрасывается автоматически.</li>
   <li>Повторное открытие того же файла не уничтожает разрезы и Undo.</li>
   <li>Редкие команды собраны в верхних меню <b>Файл / Правка / Воспроизведение / Аудио / Вид / Справка</b>.</li>
@@ -655,28 +655,28 @@ HELP_HTML = {
 </ul>
 <h3>Просмотр и навигация</h3>
 <ul>
-  <li><b>Play / Pause [Space]</b> — воспроизводит будущий результат монтажа: удалённые участки пропускаются по тем же эффективным keyframe-границам, что и lossless export. На паузе ручной seek по удалённым кадрам остаётся доступен.</li>
-  <li><b>Mute [M]</b> — выключить звук preview.</li>
-  <li><b>← / →</b> — переход на 1 секунду назад / вперёд.</li>
-  <li><b>Q / E</b> — предыдущий / следующий разрез. Если разреза нет — начало / конец видео.</li>
-  <li>Клик или drag по <b>верхней шкале времени</b> — seek / scrub.</li>
-  <li>Клик по <b>нижнему таймлайну</b> — выбрать фрагмент, не меняя позицию воспроизведения.</li>
-  <li>Колесо мыши над таймлайном — горизонтальный скролл.</li>
-  <li><b>Ctrl + колесо</b> — zoom вокруг курсора.</li>
+  <li><b>Play / Pause [Space]</b>: воспроизводит будущий результат монтажа: удалённые участки пропускаются по тем же эффективным keyframe-границам, что и lossless export. На паузе ручной seek по удалённым кадрам остаётся доступен.</li>
+  <li><b>Mute [M]</b>: выключить звук preview.</li>
+  <li><b>← / →</b>: переход на 1 секунду назад / вперёд.</li>
+  <li><b>Q / E</b>: предыдущий / следующий разрез. Если разреза нет, выполняется переход к началу / концу видео.</li>
+  <li>Щёлкните или перетащите указатель по <b>верхней шкале времени</b>, чтобы выполнить seek / scrub.</li>
+  <li>Щёлкните по <b>нижнему таймлайну</b>, чтобы выбрать фрагмент, не меняя позицию воспроизведения.</li>
+  <li>Прокручивайте колесо мыши над таймлайном для горизонтального скролла.</li>
+  <li>Удерживайте <b>Ctrl</b> и прокручивайте колесо, чтобы менять zoom вокруг курсора.</li>
 </ul>
 <h3>Монтаж</h3>
 <ul>
-  <li><b>Разрезать [S]</b> — создать разрез в позиции красной линии.</li>
-  <li><b>Убрать разрез [Shift+S]</b> — объединить соседние фрагменты, когда playhead точно стоит на разрезе. Для перехода на разрез удобно использовать Q/E.</li>
-  <li><b>Удалить [Delete]</b> — исключить выбранный фрагмент из общего экспорта.</li>
-  <li><b>Восстановить</b> — вернуть удалённый фрагмент.</li>
-  <li><b>Undo [Ctrl+Z]</b> / <b>Redo [Ctrl+Y]</b> — отменить / вернуть изменение.</li>
+  <li><b>Разрезать [S]</b>: создать разрез в позиции красной линии.</li>
+  <li><b>Убрать разрез [Shift+S]</b>: объединить соседние фрагменты, когда playhead точно стоит на разрезе. Для перехода на разрез удобно использовать Q/E.</li>
+  <li><b>Удалить [Delete]</b>: исключить выбранный фрагмент из общего экспорта.</li>
+  <li><b>Восстановить</b>: вернуть удалённый фрагмент.</li>
+  <li><b>Undo [Ctrl+Z]</b> / <b>Redo [Ctrl+Y]</b>: отменить / вернуть изменение.</li>
 </ul>
 <h3>Экспорт</h3>
 <ul>
-  <li><b>Lossless Export</b> — экспортировать все неудалённые фрагменты; видеоряд остаётся stream-copy, а Main Mix и другой обрабатываемый звук кодируются только при необходимости.</li>
+  <li><b>Lossless Export</b>: экспортировать все неудалённые фрагменты; видеоряд остаётся stream-copy, а Main Mix и другой обрабатываемый звук кодируются только при необходимости.</li>
   <li><b>Скорость:</b> неизменённый звук обычно остаётся stream-copy и экспортируется очень быстро. Volume/Fade или настоящий Main Mix из нескольких дорожек требуют декодирования, обработки/микширования и кодирования AAC, поэтому на длинных записях экспорт может занять заметно больше времени; видео при этом остаётся stream-copy.</li>
-  <li><b>Экспорт фрагмента</b> — сохранить только текущий выбранный фрагмент в отдельный файл.</li>
+  <li><b>Экспорт фрагмента</b>: сохранить только текущий выбранный фрагмент в отдельный файл.</li>
   <li>Экспорт выбранного фрагмента работает независимо от того, отмечен он на удаление или нет.</li>
   <li><b>Экспорт видео</b> и <b>Экспорт звука</b> включены по умолчанию.</li>
   <li><b>Аудио → Доступные аудиодорожки…</b> отвечает за выбор встроенных/внешних дорожек, которые видны на таймлайне и доступны для экспорта звука. Каждая видимая дорожка отображается прямо в меню <b>Аудио</b> со своим подменю Volume/Fade. Внешний клип можно скопировать из его подменю или через правый клик по блоку на таймлайне.</li>
@@ -684,7 +684,7 @@ HELP_HTML = {
   <li><b>Флаг Play</b> слева от каждой видимой аудиодорожки управляет участием в миксе: ▶ входит в live preview и Main Mix, ▷ исключена. При открытии видео в миксе по умолчанию активна только первая встроенная дорожка; новое внешнее аудио сразу добавляется активным. Отдельные stems при этом сохраняются независимо, если их экспорт включён.</li>
   <li>Внешнее аудио позиционируется и обрезается прямо на таймлайне: блок перемещает дорожку, левый/правый край сокращает начало/конец.</li>
   <li>Область <b>Аудиодорожки</b> показывает встроенные и внешние дорожки на той же масштабированной временной шкале, что и видео. Высота области стабильна, а при большом числе выбранных дорожек появляется вертикальный скроллинг, поэтому конфигурация аудио больше не меняет размер preview; снятые с экспорта дорожки скрываются.</li>
-  <li><b>Создавать Main Mix</b> формирует готовый AAC-микс первым аудиопотоком, делает его дорожкой по умолчанию и включён по умолчанию. <b>Сохранять отдельные дорожки (stems)</b> — дополнительный режим для продвинутого экспорта; по умолчанию он выключен.</li>
+  <li><b>Создавать Main Mix</b> формирует готовый AAC-микс первым аудиопотоком, делает его дорожкой по умолчанию и включён по умолчанию. <b>Сохранять отдельные дорожки (stems)</b>: дополнительный режим для продвинутого экспорта; по умолчанию он выключен.</li>
   <li>Можно экспортировать видео со звуком, только видео или только звук.</li>
   <li><b>Контейнеры для вывода видео:</b> MP4, MOV, MKV. Для остальных входных контейнеров по умолчанию предлагается MKV.</li>
   <li>Если снять обе галочки, кнопки экспорта становятся недоступны.</li>
