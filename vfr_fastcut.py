@@ -590,7 +590,7 @@ HELP_HTML = {
   <li><b>Q / E</b>: previous / next cut. Falls back to the start / end of the video.</li>
   <li>Click or drag the <b>upper time ruler</b> to seek / scrub.</li>
   <li>Click the <b>lower timeline track</b> to select a segment without moving the playhead.</li>
-  <li>Mouse wheel over the timeline — horizontal scroll.</li>
+  <li>Use the mouse wheel over the timeline for horizontal scrolling.</li>
   <li><b>Ctrl + wheel</b>: zoom around the cursor.</li>
 </ul>
 <h3>Editing</h3>
