@@ -77,6 +77,39 @@ try {
 
     Copy-Item (Join-Path $RuntimeDir "*") $TargetFfmpegBin -Recurse -Force
 
+    # PyInstaller's generic PySide6 hooks can pull optional Qt plugin families
+    # that VFR FastCut never imports or uses. Prune them from the portable
+    # package so the shipped binary inventory matches the application's real
+    # dependency surface and does not create unnecessary redistribution/source
+    # obligations for QtPdf/QML/Quick/VirtualKeyboard.
+    $unusedQtPaths = @(
+        "PySide6\Qt6Pdf.dll",
+        "PySide6\Qt6Qml.dll",
+        "PySide6\Qt6QmlMeta.dll",
+        "PySide6\Qt6QmlModels.dll",
+        "PySide6\Qt6QmlWorkerScript.dll",
+        "PySide6\Qt6Quick.dll",
+        "PySide6\Qt6VirtualKeyboard.dll",
+        "PySide6\plugins\generic\qtuiotouchplugin.dll",
+        "PySide6\plugins\imageformats\qpdf.dll",
+        "PySide6\plugins\platforminputcontexts\qtvirtualkeyboardplugin.dll"
+    )
+
+    $removedQtPaths = @()
+    foreach ($rel in $unusedQtPaths) {
+        $candidate = Join-Path $DistDir $rel
+        if (Test-Path $candidate -PathType Leaf) {
+            Remove-Item $candidate -Force
+            $removedQtPaths += $rel
+        }
+    }
+
+    if ($removedQtPaths.Count -gt 0) {
+        Write-Host "Pruned unused optional Qt components:" -ForegroundColor Cyan
+        $removedQtPaths | ForEach-Object { Write-Host "  $_" }
+        Write-Host
+    }
+
     $requiredPortableFiles = @(
         "VFRFastCut.exe",
         "LICENSE",
@@ -84,7 +117,6 @@ try {
         "THIRD_PARTY_VERSIONS.md",
         "LICENSES\LGPL-2.1.txt",
         "LICENSES\LGPL-3.0.txt",
-        "LICENSES\Python-3.14.5-LICENSE.txt",
         "ffmpeg\bin\ffmpeg.exe",
         "ffmpeg\bin\ffprobe.exe",
         "ffmpeg\bin\BUILD_INFO.txt",
@@ -98,8 +130,24 @@ try {
         }
     }
 
+    $portableLicenseDir = Join-Path $DistDir "LICENSES"
+    $pythonLicenses = @()
+    if (Test-Path $portableLicenseDir -PathType Container) {
+        $pythonLicenses = @(
+            Get-ChildItem $portableLicenseDir -File -Filter "Python-*-LICENSE.txt"
+        )
+    }
+    if ($pythonLicenses.Count -eq 0) {
+        $missingPortableFiles += "LICENSES\Python-<build-version>-LICENSE.txt"
+    }
+
     if ($missingPortableFiles.Count -gt 0) {
         throw "Portable package staging failed. Missing: $($missingPortableFiles -join ', ')"
+    }
+
+    if ($pythonLicenses.Count -gt 1) {
+        Write-Host "WARNING: multiple Python license files found in the portable directory:" -ForegroundColor Yellow
+        $pythonLicenses | ForEach-Object { Write-Host "  $($_.Name)" -ForegroundColor Yellow }
     }
 
     Write-Host "Testing bundled FFmpeg executables..." -ForegroundColor Cyan
@@ -118,6 +166,32 @@ try {
         Write-Host "Running portable audit..." -ForegroundColor Cyan
         & $AuditScript -DistDir $DistDir
     }
+
+    # A short launch smoke test catches missing DLL/plugin dependencies after
+    # pruning optional Qt components. The blank editor should stay alive until
+    # we terminate it explicitly.
+    Write-Host "Running portable launch smoke test..." -ForegroundColor Cyan
+    $PortableExe = Join-Path $DistDir "VFRFastCut.exe"
+    $SmokeProcess = $null
+    try {
+        $SmokeProcess = Start-Process -FilePath $PortableExe -PassThru
+        Start-Sleep -Seconds 4
+        $SmokeProcess.Refresh()
+        if ($SmokeProcess.HasExited) {
+            throw "Portable launch smoke test failed: VFRFastCut.exe exited early with code $($SmokeProcess.ExitCode)."
+        }
+    }
+    finally {
+        if ($null -ne $SmokeProcess) {
+            $SmokeProcess.Refresh()
+            if (-not $SmokeProcess.HasExited) {
+                Stop-Process -Id $SmokeProcess.Id -Force -ErrorAction SilentlyContinue
+                Wait-Process -Id $SmokeProcess.Id -ErrorAction SilentlyContinue
+            }
+        }
+    }
+    Write-Host "Portable launch smoke test: OK" -ForegroundColor Green
+    Write-Host
 
     $ArchiveName = "VFRFastCut-v$Version-Windows-x64.zip"
     $ArchivePath = Join-Path $OutputDir $ArchiveName

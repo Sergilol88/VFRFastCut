@@ -20,7 +20,6 @@ $required = @(
     "THIRD_PARTY_VERSIONS.md",
     "LICENSES\LGPL-2.1.txt",
     "LICENSES\LGPL-3.0.txt",
-    "LICENSES\Python-3.14.5-LICENSE.txt",
     "ffmpeg\bin\ffmpeg.exe",
     "ffmpeg\bin\ffprobe.exe",
     "ffmpeg\bin\BUILD_INFO.txt",
@@ -35,6 +34,17 @@ foreach ($rel in $required) {
     }
 }
 
+$licenseDir = Join-Path $DistDir "LICENSES"
+$pythonLicenses = @()
+if (Test-Path $licenseDir -PathType Container) {
+    $pythonLicenses = @(
+        Get-ChildItem $licenseDir -File -Filter "Python-*-LICENSE.txt"
+    )
+}
+if ($pythonLicenses.Count -eq 0) {
+    $missing += "LICENSES\Python-<build-version>-LICENSE.txt"
+}
+
 if ($missing.Count -gt 0) {
     Write-Host "Missing expected release files:" -ForegroundColor Red
     $missing | ForEach-Object { Write-Host "  $_" -ForegroundColor Red }
@@ -42,6 +52,12 @@ if ($missing.Count -gt 0) {
     throw "Portable audit failed because required release files are missing."
 } else {
     Write-Host "Expected license/runtime files: OK" -ForegroundColor Green
+    $pythonLicenses | ForEach-Object {
+        Write-Host "  Python license: $($_.Name)"
+    }
+    if ($pythonLicenses.Count -gt 1) {
+        Write-Host "  WARNING: more than one Python build license is present; verify the package contains the license matching the bundled interpreter." -ForegroundColor Yellow
+    }
     Write-Host
 }
 
@@ -57,6 +73,38 @@ $qtDlls | ForEach-Object {
     Write-Host "  $($_.FullName.Substring($DistDir.Length + 1))"
 }
 Write-Host
+
+# These optional Qt families are not part of VFR FastCut's runtime surface.
+# package-portable.ps1 removes them after PyInstaller collection; fail the
+# audit if they reappear so the release does not silently expand its bundled
+# dependency/source-obligation inventory.
+$forbiddenQtPaths = @(
+    "PySide6\Qt6Pdf.dll",
+    "PySide6\Qt6Qml.dll",
+    "PySide6\Qt6QmlMeta.dll",
+    "PySide6\Qt6QmlModels.dll",
+    "PySide6\Qt6QmlWorkerScript.dll",
+    "PySide6\Qt6Quick.dll",
+    "PySide6\Qt6VirtualKeyboard.dll",
+    "PySide6\plugins\generic\qtuiotouchplugin.dll",
+    "PySide6\plugins\imageformats\qpdf.dll",
+    "PySide6\plugins\platforminputcontexts\qtvirtualkeyboardplugin.dll"
+)
+$unexpectedQt = @()
+foreach ($rel in $forbiddenQtPaths) {
+    if (Test-Path (Join-Path $DistDir $rel) -PathType Leaf) {
+        $unexpectedQt += $rel
+    }
+}
+if ($unexpectedQt.Count -gt 0) {
+    Write-Host "Unexpected unused optional Qt components:" -ForegroundColor Red
+    $unexpectedQt | ForEach-Object { Write-Host "  $_" -ForegroundColor Red }
+    Write-Host
+    throw "Portable audit failed because unused optional Qt components were not pruned."
+} else {
+    Write-Host "Unused optional Qt families (Pdf/QML/Quick/VirtualKeyboard): pruned" -ForegroundColor Green
+    Write-Host
+}
 
 Write-Host "Qt plugin DLLs:"
 Get-ChildItem $DistDir -Recurse -File -Filter "*.dll" |

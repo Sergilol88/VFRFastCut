@@ -2,6 +2,38 @@
 
 All notable changes to VFR FastCut are documented here.
 
+## 0.5.0
+
+### Keyframe-aware editing and preview
+
+- Added a reusable background keyframe map shared by timeline visualization, Edited Preview and lossless export.
+- Added keyframe markers that appear only when timeline density is useful, keeping long-VOD painting inexpensive.
+- Added Edited Preview: normal playback skips deleted ranges using the same effective keyframe-snapped boundaries as export.
+- Manual paused seeking remains unrestricted, so deleted source ranges can still be inspected before deciding what to keep.
+- Preview audio channels hard-sync after automatic edited-range jumps.
+
+### Export and audio performance
+
+- Added a fast single-track Main Mix path: one unchanged built-in AAC track can be kept by stream-copy instead of being decoded and re-encoded.
+- Removed redundant processed-export primary/remux passes and unnecessary large temporary-file I/O.
+- Reused the background keyframe map during export instead of rescanning the source when possible.
+- Preserved video stream-copy throughout audio processing paths.
+- Clarified performance behavior: unchanged audio is usually very fast to export, while Volume/Fade or a true multi-track Main Mix must decode/process/re-encode audio and can therefore take noticeably longer on long recordings.
+
+### Interface and stability
+
+- Replaced the permanent lower progress bar with a shared modeless Task Progress Dialog for keyframe analysis and export.
+- Keyframe analysis can run in the background while editing remains available.
+- Hardened keyframe worker generation/cancellation lifecycle so stale scans cannot replace the current source map.
+- Reduced hot-path work in Edited Preview, audio fade calculations and keyframe timeline painting.
+- Removed stale/dead state left by the 0.5.x refactors.
+
+### Build and release
+
+- CI now compiles the application/keyframe module, runs unit tests and builds/audits a portable Windows artifact on pull requests.
+- Repaired the minimal-FFmpeg CI path so runtime package splits/renames no longer break release metadata generation.
+- Portable packaging now uses the verified `tools/release/package-portable.ps1` path, validates bundled FFmpeg/FFprobe and verifies archive contents before producing the SHA-256 file.
+
 ## 0.4.15
 
 ### Audio timeline and mixing

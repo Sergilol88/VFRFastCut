@@ -38,10 +38,24 @@ if [[ "$SOURCE_SHA256" != "$EXPECTED_SOURCE_SHA256" ]]; then
   exit 1
 fi
 
-LIBWINPTHREAD_PACKAGE="mingw-w64-ucrt-x86_64-libwinpthread"
-GCC_LIBS_PACKAGE="mingw-w64-ucrt-x86_64-gcc-libs"
-LIBWINPTHREAD_VERSION="$(pacman -Q "$LIBWINPTHREAD_PACKAGE" | awk '{print $2}')"
-GCC_LIBS_VERSION="$(pacman -Q "$GCC_LIBS_PACKAGE" | awk '{print $2}')"
+# MSYS2 occasionally splits or renames GCC runtime packages. Record the package
+# that actually owns each runtime DLL instead of assuming historical package
+# names such as mingw-w64-ucrt-x86_64-gcc-libs.
+runtime_package_info() {
+  local runtime_file="$1"
+  local owner=""
+
+  owner="$(pacman -Qqo "$runtime_file" 2>/dev/null || true)"
+  if [[ -z "$owner" ]]; then
+    printf 'unowned (%s)\n' "$runtime_file"
+    return 0
+  fi
+
+  pacman -Q "$owner" | head -n 1
+}
+
+LIBWINPTHREAD_PACKAGE_INFO="$(runtime_package_info "${MINGW_RUNTIME_BIN}/libwinpthread-1.dll")"
+LIBGCC_PACKAGE_INFO="$(runtime_package_info "${MINGW_RUNTIME_BIN}/libgcc_s_seh-1.dll")"
 
 tar -xf "$SRC_ARCHIVE" -C "$WORK_DIR"
 cd "$SRC_DIR"
@@ -148,9 +162,9 @@ cp COPYING.LGPLv2.1 "$RUNTIME_DIR/"
   echo "Bundled MinGW runtime DLLs:"
   printf '  %s\n' "${RUNTIME_DLLS[@]}"
   echo
-  echo "MSYS2 runtime packages:"
-  echo "  ${LIBWINPTHREAD_PACKAGE} ${LIBWINPTHREAD_VERSION}"
-  echo "  ${GCC_LIBS_PACKAGE} ${GCC_LIBS_VERSION}"
+  echo "MSYS2 runtime packages owning bundled DLLs:"
+  echo "  ${LIBWINPTHREAD_PACKAGE_INFO}"
+  echo "  ${LIBGCC_PACKAGE_INFO}"
   echo
   echo "Configure flags:"
   printf '  %s\n' "${CONFIGURE_FLAGS[@]}"

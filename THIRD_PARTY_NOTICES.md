@@ -4,23 +4,23 @@ VFR FastCut's own source code is licensed under the MIT License. Packaged Window
 
 This file is a practical redistribution record, not legal advice. Exact versions used for packaged releases are recorded in `THIRD_PARTY_VERSIONS.md`.
 
-## Python runtime — v0.4.15
+## Python runtime — v0.5.0
 
 The PyInstaller portable build contains the CPython runtime used to build the application.
 
-Recorded v0.4.15 version:
+Recorded v0.5.0 version:
 
 - Python `3.14.5`
 
-The final portable package must include the exact `LICENSE.txt` from that Python installation, stored under `LICENSES/`.
+The final portable package includes the exact `LICENSE.txt` from that Python installation under `LICENSES/`. The Windows Python runtime also contributes OpenSSL runtime DLLs; applicable bundled-component notices are retained through that exact Python license stack.
 
 Official licensing information:
 - https://docs.python.org/3/license.html
 - https://www.python.org/psf/about/legal-and-policies/
 
-## Qt for Python / PySide6 and Qt — v0.4.15
+## Qt for Python / PySide6 and Qt — v0.5.0
 
-VFR FastCut uses PySide6 / Qt for Python and Qt modules including QtCore, QtGui, QtWidgets and QtMultimedia.
+VFR FastCut uses PySide6 / Qt for Python and Qt modules required by QtCore, QtGui, QtWidgets and QtMultimedia-based preview/playback.
 
 Recorded versions:
 
@@ -29,20 +29,30 @@ Recorded versions:
 
 The application is distributed as a PyInstaller `onedir` package. Qt/PySide6 libraries remain separate dynamically loaded files instead of being statically linked into VFR FastCut.
 
-The portable package must include the applicable LGPL/GPL license texts and a prominent third-party notice.
+The portable package includes applicable LGPL/GPL license texts and a prominent third-party notice. Corresponding source for the Qt/PySide6 libraries actually shipped with the application is retained under project control for the matching release.
 
-For LGPL compliance, corresponding source for the Qt/PySide6 libraries actually shipped with the application must remain available under project control for the corresponding release. The release checklist therefore retains the expected baseline official source archives for `qtbase`, `qtmultimedia` and `pyside-setup`, and requires a final binary inventory check for any additional Qt modules.
+The v0.5.0 packaging step intentionally removes optional QtPdf, QML, Quick and VirtualKeyboard artifacts collected by generic PyInstaller hooks because VFR FastCut does not use those families. The release audit fails if those optional artifacts reappear. The remaining expected Qt/PySide6 families are covered by retained source archives for `qtbase`, `qtmultimedia`, `qtsvg` and `pyside-setup`.
 
 Official licensing information:
 - https://doc.qt.io/qtforpython-6/
 - https://www.qt.io/development/open-source-lgpl-obligations
 - https://www.qt.io/faq/qt-open-source-licensing
 
-## FFmpeg / FFprobe — v0.4.15
+## Qt Multimedia FFmpeg runtime — v0.5.0
 
-VFR FastCut invokes its project FFmpeg / FFprobe runtime as external command-line programs.
+Qt Multimedia 6.11.2 includes a separate FFmpeg runtime used by VFR FastCut for media preview/playback. The audited portable package contains FFmpeg-family DLLs under `PySide6\` with library major versions corresponding to the FFmpeg 7.1 branch; the current PySide6 runtime has been recorded as FFmpeg `7.1.3`.
 
-The v0.4.15 Windows portable package uses a project-specific minimal runtime built from the official FFmpeg `9.0.2` release source.
+This Qt Multimedia FFmpeg runtime is distinct from the project FFmpeg 9.0.2 runtime used for export. The matching FFmpeg 7.1.3 source archive is retained/published with the release source assets.
+
+Official FFmpeg licensing information:
+- https://ffmpeg.org/legal.html
+- https://ffmpeg.org/doxygen/trunk/md_LICENSE.html
+
+## Project FFmpeg / FFprobe — v0.5.0
+
+VFR FastCut invokes its project FFmpeg / FFprobe runtime as external command-line programs for export and media probing.
+
+The v0.5.0 Windows portable package uses a project-specific minimal runtime built from the official FFmpeg `9.0.2` release source.
 
 Recorded build properties:
 
@@ -56,57 +66,36 @@ Recorded build properties:
 - video processing in VFR FastCut remains stream-copy;
 - recorded build license target: LGPL v2.1 or later.
 
-Compared with the older 0.2.x runtime, v0.4.15 intentionally enables a limited audio-processing subset required for Volume, Fade and Main Mix. It does **not** enable GPL or nonfree components.
+Compared with the older stream-copy-only runtime, v0.5.0 intentionally enables a limited audio-processing subset required for Volume, Fade and Main Mix. It does **not** enable GPL or nonfree components.
 
-The build recipe is stored in `tools/ffmpeg-minimal/`. Complete configure flags, source SHA-256, compiler information and the exact MSYS2 runtime package versions are generated into `BUILD_INFO.txt`.
+The build recipe is stored in `tools/ffmpeg-minimal/`. Complete configure flags, source SHA-256, compiler information and exact MSYS2 runtime package owners/versions are generated into `BUILD_INFO.txt`.
 
 The portable package includes:
 
 - `ffmpeg\bin\COPYING.LGPLv2.1`
 - `LICENSES\LGPL-2.1.txt`
 
-The exact `ffmpeg-9.0.2-source.tar.xz` used by the build must be retained and published with the corresponding release assets or otherwise kept available from a project-controlled location.
+The exact `ffmpeg-9.0.2-source.tar.xz` used by the build is retained and published with the corresponding release assets.
 
 FFmpeg's upstream license documentation notes that portions of libavcodec are derived from Independent JPEG Group (IJG) code and require IJG credit when distributing executables. Accordingly:
 
 > Portions of FFmpeg are based in part on the work of the Independent JPEG Group.
 
-Official FFmpeg licensing information:
-- https://ffmpeg.org/legal.html
-- https://ffmpeg.org/doxygen/trunk/md_LICENSE.html
+## MinGW runtime DLLs used by project FFmpeg — v0.5.0
 
-## MinGW runtime DLLs used by project FFmpeg — v0.4.15
+The custom FFmpeg runtime bundles `libwinpthread-1.dll` and `libgcc_s_seh-1.dll`. Exact package owners/versions are recorded dynamically in the shipped `ffmpeg\bin\BUILD_INFO.txt` and summarized in `THIRD_PARTY_VERSIONS.md`.
 
-The custom FFmpeg runtime bundles:
+Applicable package-provided license files are included in `LICENSES/`:
 
-### libwinpthread-1.dll
-
-Recorded source package:
-
-- `mingw-w64-ucrt-x86_64-libwinpthread`
-- version `14.0.0.r409.g6de5d3b4d-1`
-
-Package-provided license text:
-
-- `LICENSES/MinGW-w64-libwinpthread-COPYING.txt`
-
-### libgcc_s_seh-1.dll
-
-Recorded source package:
-
-- `mingw-w64-ucrt-x86_64-gcc-libs`
-- version `16.2.0-3`
-
-Package-provided license files:
-
-- `LICENSES/GCC-COPYING.LIB.txt`
-- `LICENSES/GCC-COPYING.RUNTIME.txt`
-- `LICENSES/GCC-COPYING3.txt`
-- `LICENSES/GCC-runtime-README.txt`
+- `MinGW-w64-libwinpthread-COPYING.txt`
+- `GCC-COPYING.LIB.txt`
+- `GCC-COPYING.RUNTIME.txt`
+- `GCC-COPYING3.txt`
+- `GCC-runtime-README.txt`
 
 ## PyInstaller
 
-Recorded v0.4.15 build tool:
+Recorded v0.5.0 build tool:
 
 - PyInstaller `6.21.0`
 
@@ -117,11 +106,11 @@ Official information:
 
 ## Final portable-binary inventory
 
-Third-party compliance must follow the **actual files shipped**, not only Python imports.
+Third-party compliance follows the **actual files shipped**, not only Python imports.
 
-Before publishing a release, run `tools/release/audit-portable.ps1` against `dist\VFRFastCut` and review all unexpected DLLs/plugins.
+Before publication, `tools/release/package-portable.ps1` prunes known-unused optional Qt components, runs `tools/release/audit-portable.ps1`, launches the portable executable as a short dependency smoke test, verifies the bundled project FFmpeg/FFprobe and then creates/re-opens the release ZIP.
 
-Qt Multimedia can introduce multimedia backend dependencies. If FFmpeg-family libraries are present outside VFR FastCut's own `ffmpeg\bin`, treat that runtime as a separate redistributed dependency and retain the corresponding license/source information.
+The audit explicitly records Qt DLLs/plugins, project and Qt Multimedia FFmpeg-family DLLs, Python/OpenSSL candidates and the project FFmpeg build metadata.
 
 ## Historical FFmpeg runtime — v0.2.33
 
