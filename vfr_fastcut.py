@@ -23,7 +23,6 @@ from vfr_keyframes import (
     KeyframeScanError,
     scan_video_keyframes,
     resolve_preview_playback_position,
-    snap_range_to_keyframes,
     snap_ranges_to_keyframes,
 )
 
@@ -2664,13 +2663,6 @@ class LosslessExporter:
             return self.keyframes
         return self._scan_keyframes(interval)
 
-    def _snap_range(
-        self, start: float, end: float, keyframes: list[float]
-    ) -> Optional[tuple[float, float]]:
-        return snap_range_to_keyframes(
-            start, end, keyframes, self.duration
-        )
-
     def _make_staging_output(self, final_output: Path) -> Path:
         suffix = final_output.suffix or Path(self.input_path).suffix or ".mkv"
         temp_file = tempfile.NamedTemporaryFile(
@@ -2703,12 +2695,6 @@ class LosslessExporter:
             if track.export_enabled
             and (source_type is None or track.source_type == source_type)
         ]
-
-    def _selected_external_tracks(self) -> list[AudioTrack]:
-        return self._selected_audio_tracks("external")
-
-    def _selected_embedded_tracks(self) -> list[AudioTrack]:
-        return self._selected_audio_tracks("embedded")
 
     def _selected_mix_tracks(
         self,
@@ -3713,7 +3699,6 @@ class TaskProgressDialog(QDialog):
         self._active = False
         self._cancellable = False
         self._allow_hide = True
-        self._user_hidden = False
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(18, 16, 18, 14)
@@ -3766,7 +3751,6 @@ class TaskProgressDialog(QDialog):
         self._active = True
         self._cancellable = bool(cancellable)
         self._allow_hide = bool(allow_hide)
-        self._user_hidden = False
 
         self.setWindowTitle(window_title)
         self.title_label.setText(title)
@@ -3820,7 +3804,6 @@ class TaskProgressDialog(QDialog):
     def finish(self):
         self._active = False
         self._cancellable = False
-        self._user_hidden = False
         self.hide()
 
     def _request_cancel(self):
@@ -3841,7 +3824,6 @@ class TaskProgressDialog(QDialog):
             return
 
         if self._allow_hide:
-            self._user_hidden = True
             self.hide()
             event.ignore()
             return
@@ -3899,7 +3881,6 @@ class MainWindow(QMainWindow):
         self.audio_probe_ok = False
         self.keyframes: list[float] = []
         self._edited_preview_ranges: list[tuple[float, float]] = []
-        self._edited_preview_ranges_exact = False
         self._edited_preview_has_deletions = False
         self._edited_preview_jump_active = False
         self._keyframe_scan_generation = 0
@@ -4688,7 +4669,6 @@ class MainWindow(QMainWindow):
         self.keyframes.clear()
         self.timeline.set_keyframes([])
         self._edited_preview_ranges.clear()
-        self._edited_preview_ranges_exact = False
         self._edited_preview_has_deletions = False
         self.selected_index = -1
         self.undo_stack.clear()
@@ -4813,7 +4793,8 @@ class MainWindow(QMainWindow):
         self._update_timeline()
         self._update_ui_state()
 
-    def _cancel_keyframe_scan(self):
+    def _cancel_keyframe_scan(self) -> Optional[threading.Thread]:
+        thread = self.keyframe_scan_thread
         self._keyframe_progress_show_timer.stop()
         self._hide_task_progress("keyframes")
         cancel_event = self._keyframe_scan_cancel_event
@@ -4824,6 +4805,7 @@ class MainWindow(QMainWindow):
         self._keyframe_scan_generation += 1
         self._keyframe_scan_cancel_event = None
         self.keyframe_scan_thread = None
+        return thread
 
     def _start_keyframe_scan(self):
         if not self.input_path or self.duration <= 0 or self.keyframes:
@@ -4891,14 +4873,19 @@ class MainWindow(QMainWindow):
                 self._t("keyframe_scan_progress", percent=percent)
             )
 
-    def on_keyframe_scan_finished(self, generation: int, keyframes):
+    def _finish_keyframe_scan_lifecycle(self, generation: int) -> bool:
         if generation != self._keyframe_scan_generation:
-            return
-
+            return False
         self._keyframe_progress_show_timer.stop()
         self._hide_task_progress("keyframes")
         self.keyframe_scan_thread = None
         self._keyframe_scan_cancel_event = None
+        return True
+
+    def on_keyframe_scan_finished(self, generation: int, keyframes):
+        if not self._finish_keyframe_scan_lifecycle(generation):
+            return
+
         self.keyframes = sorted(
             set(float(value) for value in keyframes if value >= 0.0)
         )
@@ -4910,14 +4897,10 @@ class MainWindow(QMainWindow):
                 3500,
             )
 
-    def on_keyframe_scan_failed(self, generation: int, error: str):
-        if generation != self._keyframe_scan_generation:
+    def on_keyframe_scan_failed(self, generation: int, _error: str):
+        if not self._finish_keyframe_scan_lifecycle(generation):
             return
 
-        self._keyframe_progress_show_timer.stop()
-        self._hide_task_progress("keyframes")
-        self.keyframe_scan_thread = None
-        self._keyframe_scan_cancel_event = None
         self.keyframes.clear()
         self.timeline.set_keyframes([])
         self._refresh_edited_preview_ranges()
@@ -5038,7 +5021,6 @@ class MainWindow(QMainWindow):
         kept = kept_ranges_from_segments(self.segments)
         if not kept:
             self._edited_preview_ranges = []
-            self._edited_preview_ranges_exact = bool(self.keyframes)
             return
 
         if self.keyframes and self.duration > 0:
@@ -5048,13 +5030,11 @@ class MainWindow(QMainWindow):
                 self.duration,
             )
             self._edited_preview_ranges = ranges
-            self._edited_preview_ranges_exact = True
         else:
             # Keep preview usable while the background ffprobe scan is still
             # running (or unavailable). As soon as the map arrives this cache
             # is rebuilt with the exact export snapping rules.
             self._edited_preview_ranges = kept
-            self._edited_preview_ranges_exact = False
 
     def _edited_preview_enabled(self) -> bool:
         return self._edited_preview_has_deletions
@@ -7228,8 +7208,7 @@ class MainWindow(QMainWindow):
         )
 
     def closeEvent(self, event):
-        keyframe_thread = self.keyframe_scan_thread
-        self._cancel_keyframe_scan()
+        keyframe_thread = self._cancel_keyframe_scan()
         if keyframe_thread and keyframe_thread.is_alive():
             keyframe_thread.join(timeout=0.75)
 
