@@ -230,8 +230,6 @@ Minimum release test:
 
 Restore:
 
-Restore:
-
 ```powershell
 Rename-Item C:\ffmpeg_BACKUP C:\ffmpeg
 ```
