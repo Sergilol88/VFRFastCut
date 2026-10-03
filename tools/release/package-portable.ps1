@@ -84,7 +84,6 @@ try {
         "THIRD_PARTY_VERSIONS.md",
         "LICENSES\LGPL-2.1.txt",
         "LICENSES\LGPL-3.0.txt",
-        "LICENSES\Python-3.14.5-LICENSE.txt",
         "ffmpeg\bin\ffmpeg.exe",
         "ffmpeg\bin\ffprobe.exe",
         "ffmpeg\bin\BUILD_INFO.txt",
@@ -98,8 +97,24 @@ try {
         }
     }
 
+    $portableLicenseDir = Join-Path $DistDir "LICENSES"
+    $pythonLicenses = @()
+    if (Test-Path $portableLicenseDir -PathType Container) {
+        $pythonLicenses = @(
+            Get-ChildItem $portableLicenseDir -File -Filter "Python-*-LICENSE.txt"
+        )
+    }
+    if ($pythonLicenses.Count -eq 0) {
+        $missingPortableFiles += "LICENSES\Python-<build-version>-LICENSE.txt"
+    }
+
     if ($missingPortableFiles.Count -gt 0) {
         throw "Portable package staging failed. Missing: $($missingPortableFiles -join ', ')"
+    }
+
+    if ($pythonLicenses.Count -gt 1) {
+        Write-Host "WARNING: multiple Python license files found in the portable directory:" -ForegroundColor Yellow
+        $pythonLicenses | ForEach-Object { Write-Host "  $($_.Name)" -ForegroundColor Yellow }
     }
 
     Write-Host "Testing bundled FFmpeg executables..." -ForegroundColor Cyan
