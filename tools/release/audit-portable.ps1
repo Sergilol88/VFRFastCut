@@ -20,7 +20,6 @@ $required = @(
     "THIRD_PARTY_VERSIONS.md",
     "LICENSES\LGPL-2.1.txt",
     "LICENSES\LGPL-3.0.txt",
-    "LICENSES\Python-3.14.5-LICENSE.txt",
     "ffmpeg\bin\ffmpeg.exe",
     "ffmpeg\bin\ffprobe.exe",
     "ffmpeg\bin\BUILD_INFO.txt",
@@ -35,6 +34,17 @@ foreach ($rel in $required) {
     }
 }
 
+$licenseDir = Join-Path $DistDir "LICENSES"
+$pythonLicenses = @()
+if (Test-Path $licenseDir -PathType Container) {
+    $pythonLicenses = @(
+        Get-ChildItem $licenseDir -File -Filter "Python-*-LICENSE.txt"
+    )
+}
+if ($pythonLicenses.Count -eq 0) {
+    $missing += "LICENSES\Python-<build-version>-LICENSE.txt"
+}
+
 if ($missing.Count -gt 0) {
     Write-Host "Missing expected release files:" -ForegroundColor Red
     $missing | ForEach-Object { Write-Host "  $_" -ForegroundColor Red }
@@ -42,6 +52,12 @@ if ($missing.Count -gt 0) {
     throw "Portable audit failed because required release files are missing."
 } else {
     Write-Host "Expected license/runtime files: OK" -ForegroundColor Green
+    $pythonLicenses | ForEach-Object {
+        Write-Host "  Python license: $($_.Name)"
+    }
+    if ($pythonLicenses.Count -gt 1) {
+        Write-Host "  WARNING: more than one Python build license is present; verify the package contains the license matching the bundled interpreter." -ForegroundColor Yellow
+    }
     Write-Host
 }
 
