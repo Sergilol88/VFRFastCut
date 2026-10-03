@@ -22,6 +22,7 @@ from vfr_keyframes import (
     KeyframeScanCancelled,
     KeyframeScanError,
     scan_video_keyframes,
+    resolve_preview_playback_position,
     snap_range_to_keyframes,
     snap_ranges_to_keyframes,
 )
@@ -288,6 +289,10 @@ UI_TEXT = {
         "help_tip": "Open help and keyboard shortcuts",
         "language_tip": "Interface language",
         "cancel_export": "Cancel export",
+        "task_export_title": "Lossless Export",
+        "task_export_preparing": "Preparing export…",
+        "task_keyframe_title": "Analyzing video",
+        "task_keyframe_hint": "You can continue editing while keyframes are analyzed.",
         "timeline": "Timeline",
         "volume": "Volume",
         "ready": "Ready.",
@@ -314,6 +319,7 @@ UI_TEXT = {
         "cut_removed_status": "Cut removed: {time}",
         "marked_deleted": "Segment marked for deletion.",
         "restored": "Segment restored.",
+        "preview_nothing_to_play": "All video segments are deleted; there is nothing to play.",
         "help_title": "Help",
         "close": "Close",
         "tools_missing_both": "ffmpeg.exe and ffprobe.exe",
@@ -482,6 +488,10 @@ UI_TEXT = {
         "help_tip": "Открыть справку и список горячих клавиш",
         "language_tip": "Язык интерфейса",
         "cancel_export": "Отмена экспорта",
+        "task_export_title": "Lossless Export",
+        "task_export_preparing": "Подготавливаю экспорт…",
+        "task_keyframe_title": "Анализ видео",
+        "task_keyframe_hint": "Можно продолжать монтаж, пока анализируются keyframes.",
         "timeline": "Таймлайн",
         "volume": "Громкость",
         "ready": "Готово.",
@@ -508,6 +518,7 @@ UI_TEXT = {
         "cut_removed_status": "Разрез убран: {time}",
         "marked_deleted": "Фрагмент помечен на удаление.",
         "restored": "Фрагмент восстановлен.",
+        "preview_nothing_to_play": "Все видеофрагменты удалены — воспроизводить нечего.",
         "help_title": "Справка",
         "close": "Закрыть",
         "tools_missing_both": "ffmpeg.exe и ffprobe.exe",
@@ -575,7 +586,7 @@ HELP_HTML = {
 </ul>
 <h3>Playback and navigation</h3>
 <ul>
-  <li><b>Play / Pause [Space]</b> — playback control.</li>
+  <li><b>Play / Pause [Space]</b> — plays the edited result: deleted gaps are skipped using the same effective keyframe boundaries as lossless export. Manual seeking can still inspect deleted source frames while paused.</li>
   <li><b>Mute [M]</b> — mute preview audio.</li>
   <li><b>← / →</b> — seek by one second.</li>
   <li><b>Q / E</b> — previous / next cut. Falls back to the start / end of the video.</li>
@@ -645,7 +656,7 @@ HELP_HTML = {
 </ul>
 <h3>Просмотр и навигация</h3>
 <ul>
-  <li><b>Play / Pause [Space]</b> — воспроизведение и пауза.</li>
+  <li><b>Play / Pause [Space]</b> — воспроизводит будущий результат монтажа: удалённые участки пропускаются по тем же эффективным keyframe-границам, что и lossless export. На паузе ручной seek по удалённым кадрам остаётся доступен.</li>
   <li><b>Mute [M]</b> — выключить звук preview.</li>
   <li><b>← / →</b> — переход на 1 секунду назад / вперёд.</li>
   <li><b>Q / E</b> — предыдущий / следующий разрез. Если разреза нет — начало / конец видео.</li>
@@ -3669,6 +3680,158 @@ class LosslessExporter:
             self.signals.failed.emit(str(exc))
 
 
+class TaskProgressDialog(QDialog):
+    """Compact modeless progress window shared by long-running tasks."""
+
+    cancelRequested = Signal()
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowFlag(Qt.WindowType.WindowContextHelpButtonHint, False)
+        self.setWindowModality(Qt.WindowModality.NonModal)
+        self.setMinimumWidth(520)
+
+        self._active = False
+        self._cancellable = False
+        self._allow_hide = True
+        self._user_hidden = False
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(18, 16, 18, 14)
+        layout.setSpacing(10)
+
+        self.title_label = QLabel()
+        title_font = self.title_label.font()
+        title_font.setBold(True)
+        title_font.setPointSize(max(title_font.pointSize(), 11))
+        self.title_label.setFont(title_font)
+        layout.addWidget(self.title_label)
+
+        self.step_label = QLabel()
+        self.step_label.setWordWrap(True)
+        self.step_label.setMinimumHeight(36)
+        layout.addWidget(self.step_label)
+
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setRange(0, 100)
+        self.progress_bar.setValue(0)
+        self.progress_bar.setTextVisible(True)
+        self.progress_bar.setFixedHeight(24)
+        layout.addWidget(self.progress_bar)
+
+        self.hint_label = QLabel()
+        self.hint_label.setWordWrap(True)
+        self.hint_label.setStyleSheet("color: #777;")
+        layout.addWidget(self.hint_label)
+
+        buttons = QHBoxLayout()
+        buttons.addStretch(1)
+        self.cancel_btn = QPushButton()
+        self.cancel_btn.clicked.connect(self._request_cancel)
+        buttons.addWidget(self.cancel_btn)
+        layout.addLayout(buttons)
+
+    def begin(
+        self,
+        *,
+        window_title: str,
+        title: str,
+        text: str,
+        percent: int | None = 0,
+        hint: str = "",
+        cancel_text: str = "Cancel",
+        cancellable: bool = False,
+        allow_hide: bool = True,
+        focus: bool = False,
+    ):
+        self._active = True
+        self._cancellable = bool(cancellable)
+        self._allow_hide = bool(allow_hide)
+        self._user_hidden = False
+
+        self.setWindowTitle(window_title)
+        self.title_label.setText(title)
+        self.step_label.setText(text)
+        self.hint_label.setText(hint)
+        self.hint_label.setVisible(bool(hint))
+        self.cancel_btn.setText(cancel_text)
+        self.cancel_btn.setVisible(bool(cancellable))
+        self.cancel_btn.setEnabled(bool(cancellable))
+        self.set_progress(percent)
+
+        self.adjustSize()
+        self.show()
+        if focus:
+            self.raise_()
+            self.activateWindow()
+            if self.cancel_btn.isVisible():
+                self.cancel_btn.setFocus(Qt.FocusReason.OtherFocusReason)
+
+    def set_progress(self, percent: int | None):
+        if percent is None:
+            self.progress_bar.setRange(0, 0)
+            return
+        if self.progress_bar.minimum() == 0 and self.progress_bar.maximum() == 0:
+            self.progress_bar.setRange(0, 100)
+        self.progress_bar.setValue(max(0, min(100, int(percent))))
+
+    def update_task(
+        self,
+        *,
+        percent: int | None = None,
+        text: str | None = None,
+        hint: str | None = None,
+    ):
+        if not self._active:
+            return
+        if percent is not None:
+            self.set_progress(percent)
+        if text is not None:
+            self.step_label.setText(text)
+        if hint is not None:
+            self.hint_label.setText(hint)
+            self.hint_label.setVisible(bool(hint))
+
+    def set_cancel_enabled(self, enabled: bool):
+        if not self._active:
+            return
+        self._cancellable = bool(enabled)
+        self.cancel_btn.setEnabled(bool(enabled))
+
+    def finish(self):
+        self._active = False
+        self._cancellable = False
+        self._user_hidden = False
+        self.hide()
+
+    def _request_cancel(self):
+        if not self._active or not self._cancellable:
+            return
+        self._cancellable = False
+        self.cancel_btn.setEnabled(False)
+        self.cancelRequested.emit()
+
+    def closeEvent(self, event):
+        if not self._active:
+            event.accept()
+            return
+
+        if self._cancellable:
+            self._request_cancel()
+            event.ignore()
+            return
+
+        if self._allow_hide:
+            self._user_hidden = True
+            self.hide()
+            event.ignore()
+            return
+
+        # Export cancellation may take a moment; keep the task visible until
+        # the worker reports cancelled/finished/failed.
+        event.ignore()
+
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -3699,12 +3862,26 @@ class MainWindow(QMainWindow):
         # Created after the native HWND exists (singleShot below).
         self.taskbar_progress: Optional[WindowsTaskbarProgress] = None
 
+        self.task_progress_dialog = TaskProgressDialog(self)
+        self.task_progress_dialog.cancelRequested.connect(self.cancel_export)
+        self._task_progress_owner = ""
+        self._keyframe_scan_percent = 0
+        self._keyframe_progress_show_timer = QTimer(self)
+        self._keyframe_progress_show_timer.setSingleShot(True)
+        self._keyframe_progress_show_timer.setInterval(300)
+        self._keyframe_progress_show_timer.timeout.connect(
+            self._show_keyframe_progress_dialog
+        )
+
         self.input_path = ""
         self.duration = 0.0
         self.segments: list[Segment] = []
         self.audio_tracks: list[AudioTrack] = []
         self.audio_probe_ok = False
         self.keyframes: list[float] = []
+        self._edited_preview_ranges: list[tuple[float, float]] = []
+        self._edited_preview_ranges_exact = False
+        self._edited_preview_jump_active = False
         self._keyframe_scan_generation = 0
         self._keyframe_scan_cancel_event: Optional[threading.Event] = None
         self.keyframe_scan_thread: Optional[threading.Thread] = None
@@ -3753,7 +3930,19 @@ class MainWindow(QMainWindow):
         self._seek_timer.setSingleShot(True)
         self._seek_timer.setInterval(SEEK_SETTLE_MS)
         self._seek_timer.timeout.connect(self._finish_smooth_seek)
+
+        # Automatic edited-preview jumps use direct seeks so cuts do not
+        # inherit the user-seek debounce delay. A short guard suppresses
+        # stale positionChanged events from retriggering the same jump.
+        self._edited_preview_jump_guard_timer = QTimer(self)
+        self._edited_preview_jump_guard_timer.setSingleShot(True)
+        self._edited_preview_jump_guard_timer.setInterval(250)
+        self._edited_preview_jump_guard_timer.timeout.connect(
+            self._clear_edited_preview_jump_guard
+        )
+
         self._resume_after_seek = False
+        self._seek_was_playing = False
         self._seek_session_active = False
 
         # Used to force the first frame to appear immediately after opening media.
@@ -3849,27 +4038,6 @@ class MainWindow(QMainWindow):
         self.export_btn.setFixedWidth(140)
         self.export_btn.setStyleSheet(EXPORT_BUTTON_STYLE)
         self.export_btn.clicked.connect(self.export_lossless)
-
-        self.cancel_export_btn = QPushButton(self._t("cancel_export"))
-        self.cancel_export_btn.setFixedWidth(140)
-        self.cancel_export_btn.clicked.connect(self.cancel_export)
-
-        # Export/Cancel occupy exactly the same fixed-width slot.
-        # Switching between them cannot move neighbouring controls.
-        self.export_stack = QStackedWidget()
-        self.export_stack.setFixedWidth(140)
-        self.export_stack.addWidget(self.export_btn)
-        self.export_stack.addWidget(self.cancel_export_btn)
-        self.export_stack.setCurrentWidget(self.export_btn)
-
-        self.progress = QProgressBar()
-        self.progress.setRange(0, 100)
-        self.progress.setValue(0)
-        self.progress.setFixedHeight(18)
-
-        # Keep the progress bar in the layout at all times so starting/stopping
-        # an export never changes the geometry of preview, timeline or controls.
-        self._set_progress_visible(False)
 
         self.audio_timeline = AudioTimelineWidget()
         self.audio_timeline.setToolTip(self._t("audio_timeline_drag_tip"))
@@ -3992,19 +4160,14 @@ class MainWindow(QMainWindow):
         bottom_layout.addLayout(essentials)
 
         export_row = QHBoxLayout()
+        author_label = QLabel("by Sergilol")
+        author_label.setStyleSheet("color: #777; font-size: 10px;")
+        export_row.addWidget(author_label)
         export_row.addStretch(1)
         export_row.addWidget(self.export_video_check)
         export_row.addWidget(self.export_audio_check)
-        export_row.addWidget(self.export_stack)
+        export_row.addWidget(self.export_btn)
         bottom_layout.addLayout(export_row)
-
-        footer = QHBoxLayout()
-        footer.addStretch(1)
-        author_label = QLabel("by Sergilol")
-        author_label.setStyleSheet("color: #777; font-size: 10px;")
-        footer.addWidget(author_label)
-        bottom_layout.addLayout(footer)
-        bottom_layout.addWidget(self.progress)
 
         layout.addWidget(bottom_panel, stretch=0)
 
@@ -4209,7 +4372,7 @@ class MainWindow(QMainWindow):
         self.export_video_check.setToolTip(self._t("export_video_tip"))
         self.export_audio_check.setText(self._t("export_audio"))
         self.export_audio_check.setToolTip(self._t("export_audio_tip"))
-        self.cancel_export_btn.setText(self._t("cancel_export"))
+        self.task_progress_dialog.cancel_btn.setText(self._t("cancel_export"))
         self.mute_btn.setText(
             self._t("unmute") if self.preview_muted else self._t("mute")
         )
@@ -4482,9 +4645,12 @@ class MainWindow(QMainWindow):
     def _clear_project_state(self):
         """Clear project state while preserving volume/mute preferences."""
         self._seek_timer.stop()
+        self._edited_preview_jump_guard_timer.stop()
         self._cancel_preview_prime()
         self._seek_session_active = False
         self._resume_after_seek = False
+        self._seek_was_playing = False
+        self._edited_preview_jump_active = False
         self._seek_temp_muted = False
         self._apply_audio_mute_state()
 
@@ -4501,6 +4667,8 @@ class MainWindow(QMainWindow):
         self.audio_probe_ok = False
         self.keyframes.clear()
         self.timeline.set_keyframes([])
+        self._edited_preview_ranges.clear()
+        self._edited_preview_ranges_exact = False
         self.selected_index = -1
         self.undo_stack.clear()
         self.redo_stack.clear()
@@ -4511,7 +4679,6 @@ class MainWindow(QMainWindow):
 
         self.time_label.setText("00:00.000 / 00:00.000")
         self.selection_label.setText(self._t("selection_none"))
-        self.progress.setValue(0)
 
         self._sync_play_button()
         self._update_ui_state()
@@ -4626,6 +4793,8 @@ class MainWindow(QMainWindow):
         self._update_ui_state()
 
     def _cancel_keyframe_scan(self):
+        self._keyframe_progress_show_timer.stop()
+        self._hide_task_progress("keyframes")
         cancel_event = self._keyframe_scan_cancel_event
         if cancel_event is not None:
             cancel_event.set()
@@ -4653,6 +4822,7 @@ class MainWindow(QMainWindow):
         duration = self.duration
         signals = self.keyframe_scan_signals
 
+        self._keyframe_scan_percent = 0
         self.statusBar().showMessage(self._t("keyframe_scan_started"))
 
         def worker():
@@ -4680,10 +4850,21 @@ class MainWindow(QMainWindow):
         )
         self.keyframe_scan_thread = thread
         thread.start()
+        self._keyframe_progress_show_timer.start()
 
     def on_keyframe_scan_progress(self, generation: int, percent: int):
         if generation != self._keyframe_scan_generation:
             return
+        self._keyframe_scan_percent = max(0, min(100, int(percent)))
+        if self._task_progress_owner == "keyframes":
+            self._update_task_progress(
+                "keyframes",
+                percent=self._keyframe_scan_percent,
+                text=self._t(
+                    "keyframe_scan_progress",
+                    percent=self._keyframe_scan_percent,
+                ),
+            )
         if not self._export_busy:
             self.statusBar().showMessage(
                 self._t("keyframe_scan_progress", percent=percent)
@@ -4693,12 +4874,15 @@ class MainWindow(QMainWindow):
         if generation != self._keyframe_scan_generation:
             return
 
+        self._keyframe_progress_show_timer.stop()
+        self._hide_task_progress("keyframes")
         self.keyframe_scan_thread = None
         self._keyframe_scan_cancel_event = None
         self.keyframes = sorted(
             set(float(value) for value in keyframes if value >= 0.0)
         )
         self.timeline.set_keyframes(self.keyframes)
+        self._refresh_edited_preview_ranges()
         if not self._export_busy:
             self.statusBar().showMessage(
                 self._t("keyframe_scan_finished", count=len(self.keyframes)),
@@ -4709,10 +4893,13 @@ class MainWindow(QMainWindow):
         if generation != self._keyframe_scan_generation:
             return
 
+        self._keyframe_progress_show_timer.stop()
+        self._hide_task_progress("keyframes")
         self.keyframe_scan_thread = None
         self._keyframe_scan_cancel_event = None
         self.keyframes.clear()
         self.timeline.set_keyframes([])
+        self._refresh_edited_preview_ranges()
         if not self._export_busy:
             self.statusBar().showMessage(
                 self._t("keyframe_scan_failed_status"),
@@ -4822,8 +5009,108 @@ class MainWindow(QMainWindow):
         self._update_ui_state()
         self._start_keyframe_scan()
 
+    def _refresh_edited_preview_ranges(self):
+        """Rebuild playable source-time ranges for edited-result preview."""
+        kept = kept_ranges_from_segments(self.segments)
+        if not kept:
+            self._edited_preview_ranges = []
+            self._edited_preview_ranges_exact = bool(self.keyframes)
+            return
+
+        if self.keyframes and self.duration > 0:
+            ranges, _max_shift = snap_ranges_to_keyframes(
+                kept,
+                self.keyframes,
+                self.duration,
+            )
+            self._edited_preview_ranges = ranges
+            self._edited_preview_ranges_exact = True
+        else:
+            # Keep preview usable while the background ffprobe scan is still
+            # running (or unavailable). As soon as the map arrives this cache
+            # is rebuilt with the exact export snapping rules.
+            self._edited_preview_ranges = kept
+            self._edited_preview_ranges_exact = False
+
+    def _edited_preview_enabled(self) -> bool:
+        return any(seg.deleted for seg in self.segments)
+
+    def _is_edited_preview_playable(self, position: float) -> bool:
+        if not self._edited_preview_enabled():
+            return True
+        index, _jump_target = resolve_preview_playback_position(
+            self._edited_preview_ranges,
+            position,
+        )
+        return index >= 0
+
+    def _clear_edited_preview_jump_guard(self):
+        self._edited_preview_jump_active = False
+
+    def _jump_edited_preview_to(self, seconds: float):
+        if self.duration <= 0:
+            return
+        seconds = max(0.0, min(self.duration, float(seconds)))
+        target_ms = int(round(seconds * 1000.0))
+
+        self._edited_preview_jump_active = True
+        self._edited_preview_jump_guard_timer.start()
+        self.player.setPosition(target_ms)
+        self.timeline.ensure_time_visible(seconds)
+        self._sync_preview_mix_transport(
+            force_seek=True,
+            project_position_ms=target_ms,
+        )
+        self._apply_preview_mix_gains(project_position=seconds)
+
+    def _maybe_route_edited_preview_playback(self, position: float) -> bool:
+        """Skip removed source-time gaps while normal playback is running."""
+        if (
+            not self._edited_preview_enabled()
+            or self._edited_preview_jump_active
+            or self._preview_priming
+            or self._seek_session_active
+            or self.player.playbackState()
+            != QMediaPlayer.PlaybackState.PlayingState
+        ):
+            return False
+
+        range_index, jump_target = resolve_preview_playback_position(
+            self._edited_preview_ranges,
+            position,
+        )
+        if range_index >= 0:
+            return False
+
+        if jump_target is not None:
+            self._jump_edited_preview_to(jump_target)
+            return True
+
+        # No future kept range. If the edit ends before source EOF, stop on the
+        # last kept frame instead of continuing into the trailing deleted area.
+        if self._edited_preview_ranges:
+            last_start, last_end = self._edited_preview_ranges[-1]
+            if last_end < self.duration - 0.001:
+                self.player.pause()
+                stop_at = max(last_start, last_end - 0.001)
+                self._jump_edited_preview_to(stop_at)
+                self._sync_play_button(QMediaPlayer.PlaybackState.PausedState)
+                return True
+        else:
+            self.player.pause()
+            self._sync_play_button(QMediaPlayer.PlaybackState.PausedState)
+            self.statusBar().showMessage(
+                self._t("preview_nothing_to_play"),
+                2500,
+            )
+            return True
+
+        return False
+
     def on_position_changed(self, ms: int):
         pos = ms / 1000.0
+        if self._maybe_route_edited_preview_playback(pos):
+            return
         self.timeline.set_position(pos)
         self.audio_timeline.set_position(pos)
         self.time_label.setText(
@@ -4900,20 +5187,25 @@ class MainWindow(QMainWindow):
         # audio backend is not repeatedly stopped/started on every seek.
         if not self._seek_session_active:
             self._seek_session_active = True
-            self._resume_after_seek = (
+            self._seek_was_playing = (
                 self.player.playbackState()
                 == QMediaPlayer.PlaybackState.PlayingState
             )
 
-            # Keep the button representing the user's logical playback mode,
-            # not the temporary internal pause used to suppress audio crackle.
-            self._set_play_button_playing(self._resume_after_seek)
-
-            if self._resume_after_seek:
+            if self._seek_was_playing:
                 self.player.pause()
 
             self._seek_temp_muted = True
             self._apply_audio_mute_state()
+
+        # Manual seek is allowed everywhere, including removed source ranges.
+        # If a seek that started during playback lands in a removed/effectively
+        # snapped-out region, remain paused so the user can inspect that frame.
+        self._resume_after_seek = (
+            self._seek_was_playing
+            and self._is_edited_preview_playable(seconds)
+        )
+        self._set_play_button_playing(self._resume_after_seek)
 
         target_ms = int(seconds * 1000)
         self.player.setPosition(target_ms)
@@ -4930,6 +5222,7 @@ class MainWindow(QMainWindow):
     def _finish_smooth_seek(self):
         resume_playback = self._resume_after_seek
         self._resume_after_seek = False
+        self._seek_was_playing = False
 
         self._seek_temp_muted = False
         self._apply_audio_mute_state()
@@ -5029,11 +5322,27 @@ class MainWindow(QMainWindow):
             self._seek_temp_muted = False
             self._apply_audio_mute_state()
             self._resume_after_seek = False
+            self._seek_was_playing = False
 
         if self.player.playbackState() == QMediaPlayer.PlaybackState.PlayingState:
             self.player.pause()
-        else:
-            self.player.play()
+            return
+
+        if self._edited_preview_enabled():
+            range_index, jump_target = resolve_preview_playback_position(
+                self._edited_preview_ranges,
+                self.current_seconds(),
+            )
+            if range_index < 0:
+                if jump_target is None:
+                    self.statusBar().showMessage(
+                        self._t("preview_nothing_to_play"),
+                        2500,
+                    )
+                    return
+                self._jump_edited_preview_to(jump_target)
+
+        self.player.play()
 
     # ---------- timeline / selection ----------
 
@@ -5311,6 +5620,7 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage("Redo", 1500)
 
     def _update_timeline(self):
+        self._refresh_edited_preview_ranges()
         self.timeline.set_state(
             self.duration,
             self.segments,
@@ -6433,11 +6743,6 @@ class MainWindow(QMainWindow):
         self.export_audio_check.setEnabled(not self._export_busy)
         self._refresh_audio_tracks_control()
 
-        self.cancel_export_btn.setEnabled(self._export_busy)
-        self.export_stack.setCurrentWidget(
-            self.cancel_export_btn if self._export_busy else self.export_btn
-        )
-
         # Menu actions mirror the same state without duplicating behaviour.
         self.act_open.setEnabled(not self._export_busy)
         self.act_reset.setEnabled(bool(self.input_path) and not self._export_busy)
@@ -6544,7 +6849,6 @@ class MainWindow(QMainWindow):
             return
 
         ffmpeg, ffprobe = tools
-        self.set_export_busy(True)
 
         self.exporter = LosslessExporter(
             ffmpeg,
@@ -6565,6 +6869,7 @@ class MainWindow(QMainWindow):
             language=self.language,
         )
 
+        self.set_export_busy(True)
         self.export_thread = threading.Thread(
             target=self.exporter.run,
             daemon=True,
@@ -6687,44 +6992,108 @@ class MainWindow(QMainWindow):
             ranges_override=[(seg.start, seg.end)],
         )
 
-    def _set_progress_visible(self, visible: bool):
-        # Do not call QWidget.setVisible(): that would remove the progress bar
-        # from the layout and make the whole window jump vertically.
-        if visible:
-            self.progress.setStyleSheet("")
-        else:
-            self.progress.setStyleSheet(
-                """
-                QProgressBar {
-                    background: transparent;
-                    border: 1px solid transparent;
-                    color: transparent;
-                }
-                QProgressBar::chunk {
-                    background: transparent;
-                }
-                """
-            )
+    def _show_task_progress(
+        self,
+        owner: str,
+        *,
+        title: str,
+        text: str,
+        percent: int | None = 0,
+        hint: str = "",
+        cancellable: bool = False,
+        allow_hide: bool = True,
+        focus: bool = False,
+    ):
+        self._task_progress_owner = owner
+        self.task_progress_dialog.begin(
+            window_title=f"{APP_NAME} — {title}",
+            title=title,
+            text=text,
+            percent=percent,
+            hint=hint,
+            cancel_text=self._t("cancel_export"),
+            cancellable=cancellable,
+            allow_hide=allow_hide,
+            focus=focus,
+        )
+
+    def _update_task_progress(
+        self,
+        owner: str,
+        *,
+        percent: int | None = None,
+        text: str | None = None,
+    ):
+        if self._task_progress_owner != owner:
+            return
+        self.task_progress_dialog.update_task(percent=percent, text=text)
+
+    def _hide_task_progress(self, owner: str):
+        if self._task_progress_owner != owner:
+            return
+        self.task_progress_dialog.finish()
+        self._task_progress_owner = ""
+
+    def _show_keyframe_progress_dialog(self):
+        thread = self.keyframe_scan_thread
+        if (
+            self._export_busy
+            or not self.input_path
+            or thread is None
+            or not thread.is_alive()
+        ):
+            return
+        self._show_task_progress(
+            "keyframes",
+            title=self._t("task_keyframe_title"),
+            text=self._t(
+                "keyframe_scan_progress",
+                percent=self._keyframe_scan_percent,
+            ),
+            percent=self._keyframe_scan_percent,
+            hint=self._t("task_keyframe_hint"),
+            cancellable=False,
+            allow_hide=True,
+            focus=False,
+        )
 
     def set_export_busy(self, busy: bool):
         self._export_busy = bool(busy)
-        self._set_progress_visible(self._export_busy)
 
         if self._export_busy:
-            self.progress.setValue(0)
+            self._keyframe_progress_show_timer.stop()
+            self._show_task_progress(
+                "export",
+                title=self._t("task_export_title"),
+                text=self._t("task_export_preparing"),
+                percent=0,
+                cancellable=True,
+                allow_hide=False,
+                focus=True,
+            )
             if self.taskbar_progress:
                 self.taskbar_progress.start()
         else:
+            self._hide_task_progress("export")
             if self.taskbar_progress:
                 self.taskbar_progress.clear()
 
         self._update_ui_state()
 
+        # Export takes visual priority if both workers overlap. Once it ends,
+        # resume the non-blocking scan dialog if the background scan is alive.
+        if not self._export_busy:
+            self._show_keyframe_progress_dialog()
+
     def cancel_export(self):
         if not self._export_busy or not self.exporter:
             return
 
-        self.cancel_export_btn.setEnabled(False)
+        self.task_progress_dialog.set_cancel_enabled(False)
+        self._update_task_progress(
+            "export",
+            text=self._t("stopping_export"),
+        )
         self.statusBar().showMessage(self._t("stopping_export"))
         self.exporter.cancel()
 
@@ -6733,7 +7102,11 @@ class MainWindow(QMainWindow):
         self.export_thread = None
 
     def on_export_progress(self, pct: int, text: str):
-        self.progress.setValue(pct)
+        self._update_task_progress(
+            "export",
+            percent=pct,
+            text=text,
+        )
         if self.taskbar_progress:
             self.taskbar_progress.update(pct)
         self.statusBar().showMessage(text)
@@ -6851,6 +7224,10 @@ class MainWindow(QMainWindow):
             if thread.is_alive():
                 exporter.force_kill()
                 thread.join(timeout=1.0)
+
+        self._keyframe_progress_show_timer.stop()
+        self.task_progress_dialog.finish()
+        self._task_progress_owner = ""
 
         if self.taskbar_progress:
             self.taskbar_progress.close()
