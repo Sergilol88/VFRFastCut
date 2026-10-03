@@ -290,21 +290,19 @@ def resolve_preview_playback_position(
 
     position = float(position)
     tolerance = max(0.0, float(tolerance))
-    starts = [start for start, _end in ranges]
+    probe = position + tolerance
 
-    index = bisect.bisect_right(starts, position + tolerance) - 1
+    # ``ranges`` is already sorted by start time. Bisect the tuple list itself
+    # instead of allocating a parallel list of starts on every player position
+    # update; this function is on the Edited Preview hot path.
+    index = bisect.bisect_right(ranges, (probe, float("inf"))) - 1
     if index >= 0:
         start, end = ranges[index]
         if start - tolerance <= position < end - tolerance:
             return index, None
 
-    next_index = bisect.bisect_right(starts, position + tolerance)
+    next_index = index + 1
     if next_index < len(ranges):
         return -1, ranges[next_index][0]
-
-    # ``bisect_right`` returns zero when position is clearly before the first
-    # range, but keep this explicit for readability and boundary regressions.
-    if position < ranges[0][0] - tolerance:
-        return -1, ranges[0][0]
 
     return -1, None
