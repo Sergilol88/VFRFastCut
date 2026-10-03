@@ -74,6 +74,38 @@ $qtDlls | ForEach-Object {
 }
 Write-Host
 
+# These optional Qt families are not part of VFR FastCut's runtime surface.
+# package-portable.ps1 removes them after PyInstaller collection; fail the
+# audit if they reappear so the release does not silently expand its bundled
+# dependency/source-obligation inventory.
+$forbiddenQtPaths = @(
+    "PySide6\Qt6Pdf.dll",
+    "PySide6\Qt6Qml.dll",
+    "PySide6\Qt6QmlMeta.dll",
+    "PySide6\Qt6QmlModels.dll",
+    "PySide6\Qt6QmlWorkerScript.dll",
+    "PySide6\Qt6Quick.dll",
+    "PySide6\Qt6VirtualKeyboard.dll",
+    "PySide6\plugins\generic\qtuiotouchplugin.dll",
+    "PySide6\plugins\imageformats\qpdf.dll",
+    "PySide6\plugins\platforminputcontexts\qtvirtualkeyboardplugin.dll"
+)
+$unexpectedQt = @()
+foreach ($rel in $forbiddenQtPaths) {
+    if (Test-Path (Join-Path $DistDir $rel) -PathType Leaf) {
+        $unexpectedQt += $rel
+    }
+}
+if ($unexpectedQt.Count -gt 0) {
+    Write-Host "Unexpected unused optional Qt components:" -ForegroundColor Red
+    $unexpectedQt | ForEach-Object { Write-Host "  $_" -ForegroundColor Red }
+    Write-Host
+    throw "Portable audit failed because unused optional Qt components were not pruned."
+} else {
+    Write-Host "Unused optional Qt families (Pdf/QML/Quick/VirtualKeyboard): pruned" -ForegroundColor Green
+    Write-Host
+}
+
 Write-Host "Qt plugin DLLs:"
 Get-ChildItem $DistDir -Recurse -File -Filter "*.dll" |
     Where-Object { $_.FullName -match "\\plugins\\" } |
