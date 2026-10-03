@@ -604,6 +604,7 @@ HELP_HTML = {
 <h3>Export</h3>
 <ul>
   <li><b>Lossless Export</b> — export all kept segments; video remains stream-copied while Main Mix and other processed audio are encoded only when required.</li>
+  <li><b>Performance:</b> unchanged audio is normally stream-copied and exports very quickly. Volume/Fade or a real multi-track Main Mix requires audio decoding, filtering/mixing and AAC encoding, so long recordings can take noticeably longer while video still remains stream-copied.</li>
   <li><b>Export segment</b> — save only the selected segment.</li>
   <li>The selected segment can be exported even if it is marked for deletion in the main edit.</li>
   <li><b>Export video</b> and <b>Export audio</b> are enabled by default.</li>
@@ -674,6 +675,7 @@ HELP_HTML = {
 <h3>Экспорт</h3>
 <ul>
   <li><b>Lossless Export</b> — экспортировать все неудалённые фрагменты; видеоряд остаётся stream-copy, а Main Mix и другой обрабатываемый звук кодируются только при необходимости.</li>
+  <li><b>Скорость:</b> неизменённый звук обычно остаётся stream-copy и экспортируется очень быстро. Volume/Fade или настоящий Main Mix из нескольких дорожек требуют декодирования, обработки/микширования и кодирования AAC, поэтому на длинных записях экспорт может занять заметно больше времени; видео при этом остаётся stream-copy.</li>
   <li><b>Экспорт фрагмента</b> — сохранить только текущий выбранный фрагмент в отдельный файл.</li>
   <li>Экспорт выбранного фрагмента работает независимо от того, отмечен он на удаление или нет.</li>
   <li><b>Экспорт видео</b> и <b>Экспорт звука</b> включены по умолчанию.</li>

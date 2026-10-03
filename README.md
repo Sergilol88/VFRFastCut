@@ -28,6 +28,8 @@ Python, PySide6/Qt and the project FFmpeg runtime are included in the portable b
 - Fast cutting without full video re-encoding.
 - Designed for VFR recordings and stream VODs.
 - Timeline zoom, horizontal scrolling, playhead navigation and cut markers.
+- Background keyframe analysis with optional keyframe markers on the timeline.
+- Edited-result preview: normal Play skips deleted ranges using the same effective keyframe boundaries as export, while paused manual seeking can still inspect deleted source frames.
 - Delete / restore unwanted segments.
 - Undo / Redo.
 - Export all kept segments or only the selected segment.
@@ -59,6 +61,7 @@ Python, PySide6/Qt and the project FFmpeg runtime are included in the portable b
 - English and Russian UI.
 - Built-in help (`F1`).
 - Compact export result dialog with expandable technical details.
+- Modeless task-progress dialogs for keyframe analysis and export; long analysis can continue while editing remains available.
 
 ## Supported formats
 
@@ -92,6 +95,8 @@ VFR FastCut is primarily a **lossless video cutter**.
 - Main Mix uses a limiter to protect against digital clipping when several loud tracks overlap.
 
 Because the exported Main Mix contains real audio processing, "Lossless Export" does **not** mean that every audio stream is always bit-for-bit copied. The completion dialog can show the detailed processing report.
+
+> **Export performance:** unchanged audio can usually be stream-copied and therefore exports very quickly, even for long recordings. Changing Volume/Fade or creating a real multi-track Main Mix requires audio decode → filter/mix → AAC encode for the affected duration, so long recordings can take noticeably longer. The video stream still remains stream-copied.
 
 ## How lossless video cutting works
 
@@ -140,7 +145,7 @@ The language can be changed from **View → Language** and is saved between laun
 
 This section is for developers and contributors. Regular users should use the portable ZIP from **Releases**.
 
-Release environment recorded for v0.4.15:
+Release environment used for v0.5.0:
 
 - Windows 10/11 x64
 - Python `3.14.5`
@@ -196,4 +201,4 @@ VFR FastCut source code is licensed under the [MIT License](LICENSE).
 
 Portable builds redistribute third-party software under their own licenses, including Python, Qt for Python / PySide6, Qt and FFmpeg. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md), [THIRD_PARTY_VERSIONS.md](THIRD_PARTY_VERSIONS.md) and the `LICENSES` directory.
 
-The v0.4.15 release process also retains the corresponding FFmpeg source and the LGPL source archives required for the shipped Qt/PySide6 components.
+The v0.5.0 release process also retains the corresponding FFmpeg source and the LGPL source archives required for the shipped Qt/PySide6 components.

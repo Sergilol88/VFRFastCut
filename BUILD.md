@@ -1,10 +1,10 @@
 # Building VFR FastCut on Windows
 
-This document describes the **v0.4.15 Windows x64 release build**.
+This document describes the **v0.5.0 Windows x64 release build**.
 
 ## 1. Release environment
 
-Recorded v0.4.15 build environment:
+Recorded v0.5.0 build environment:
 
 ```text
 Python      3.14.5
@@ -16,12 +16,7 @@ MSYS2       UCRT64
 GCC         16.2.0 (Rev3, Built by MSYS2 project)
 ```
 
-Recorded MSYS2 runtime packages:
-
-```text
-mingw-w64-ucrt-x86_64-libwinpthread 14.0.0.r409.g6de5d3b4d-1
-mingw-w64-ucrt-x86_64-gcc-libs     16.2.0-3
-```
+The exact MSYS2 runtime package owners and versions are recorded dynamically in `tools\ffmpeg-minimal\runtime\BUILD_INFO.txt` by the FFmpeg build. Do not hard-code an old GCC runtime package name here: current MSYS2 can split/rename runtime packages while the produced DLL set remains valid.
 
 Verify the Python environment before building:
 
@@ -67,7 +62,7 @@ The exact FFmpeg source archive used by the build is retained as:
 tools\ffmpeg-minimal\ffmpeg-9.0.2-source.tar.xz
 ```
 
-The v0.4.15 build intentionally keeps GPL/nonfree/version3 features disabled and enables only the demuxers, audio decoders, AAC encoder and audio filters needed by VFR FastCut.
+The v0.5.0 build intentionally keeps GPL/nonfree/version3 features disabled and enables only the demuxers, audio decoders, AAC encoder and audio filters needed by VFR FastCut.
 
 Verify the runtime from PowerShell with a representative real VFR/Twitch file:
 
@@ -93,7 +88,7 @@ Before publication:
 
 PyInstaller's bootloader exception allows the generated application bundle to be shipped under the application's own license, subject to dependency licenses; PyInstaller does not require its own license file to be included in the application bundle.
 
-Qt's LGPL guidance requires the corresponding library source to be available under project control, not only linked to an upstream web page. For v0.4.15 the expected baseline source archives are:
+Qt's LGPL guidance requires the corresponding library source to be available under project control, not only linked to an upstream web page. For v0.5.0 the expected baseline source archives are:
 
 ```text
 qtbase-everywhere-src-6.11.2.tar.xz
@@ -208,29 +203,32 @@ Launch:
 
 Minimum release test:
 
-1. Open a representative VFR/Twitch video with multiple embedded audio streams.
-2. Play / Pause and seek repeatedly.
-3. Check Safe Preview with the user's normal VRR/G-SYNC configuration.
-4. Split and remove a split.
-5. Delete and restore a segment.
-6. Multi-range export with a middle video segment deleted.
-7. Main Mix export with only the first embedded track active.
-8. Enable a second embedded track and confirm live preview + Main Mix.
-9. Add external MP3; verify live preview.
-10. Drag the external clip away from project zero and verify the exported Main Mix starts it at the same position.
-11. Trim both external clip edges.
-12. Change Volume and Fade In / Fade Out.
-13. Duplicate an external clip, move the copy, then delete the copy.
-14. Test a file from the Recent Audio submenu after restarting the app.
-15. Main Mix only (default).
-16. Main Mix + separate stems.
-17. Audio-only MKA export.
-18. Selected-segment export.
-19. Cancel export.
-20. RU ↔ EN switching and persistence.
-21. F1 help.
-22. Compact export-complete dialog, `Details`, `Open folder`, and default focus on `OK`.
-23. Confirm the portable app still runs while `C:\ffmpeg` is unavailable.
+1. Open a representative long VFR/Twitch video with multiple embedded audio streams.
+2. Confirm the keyframe-analysis task dialog appears for a sufficiently large file, then closes cleanly.
+3. Zoom the timeline until keyframe markers become visible; pan/seek/play and check for regressions or excessive UI load.
+4. Create kept → deleted → kept ranges. Normal Play must skip the deleted range, while paused manual seeking can still inspect it.
+5. Check deleted-head, deleted-tail and all-deleted projects.
+6. Play / Pause and seek repeatedly; verify preview audio stays synchronized after Edited Preview jumps.
+7. Check Safe Preview with the user's normal VRR/G-SYNC configuration.
+8. Split and remove a split; Delete/Restore; Undo/Redo.
+9. Multi-range stream-copy export with a middle video segment deleted.
+10. Main Mix with one untouched built-in AAC track and stems off: verify the fast stream-copy path.
+11. Enable a second embedded track and verify real Main Mix preview/export.
+12. Change Volume and Fade on a track and verify processed AAC output. On long recordings this test is expected to take longer because audio must be decoded/processed/re-encoded; video must remain stream-copy.
+13. Add external MP3; verify live preview, offset, trim and exported timing.
+14. Duplicate an external clip, move the copy, then delete the copy.
+15. Main Mix + separate stems.
+16. Audio-only MKA export.
+17. Selected-segment export.
+18. Cancel export from the Task Progress Dialog, then immediately start a new export.
+19. Open a second source while the first source's keyframe scan is still running; stale results must never replace the new keyframe map.
+20. Reset and close the application during keyframe analysis; no hang or late UI update is allowed.
+21. RU ↔ EN switching and persistence.
+22. F1 help, including the audio-processing performance note.
+23. Compact export-complete dialog, `Details`, `Open folder`, and default focus on `OK`.
+24. Confirm the portable app still runs while `C:\ffmpeg` is unavailable.
+
+Restore:
 
 Restore:
 
@@ -243,13 +241,14 @@ Rename-Item C:\ffmpeg_BACKUP C:\ffmpeg
 Only after the complete smoke test passes:
 
 ```text
-APP_VERSION = "0.4.15"
+APP_VERSION = "0.5.0"
 ```
 
 Run:
 
 ```powershell
-python -m py_compile .\vfr_fastcut.py
+python -m py_compile .\vfr_fastcut.py .\vfr_keyframes.py
+python -m unittest discover -s tests -p "test_*.py"
 git diff --check
 ```
 
@@ -257,17 +256,17 @@ Commit the release candidate, then build the final portable package from that ex
 
 ## 8. Create release archives
 
-```powershell
-Remove-Item .\VFRFastCut-v0.4.15-Windows-x64.zip -Force -ErrorAction SilentlyContinue
-tar.exe -a -c -f VFRFastCut-v0.4.15-Windows-x64.zip -C dist VFRFastCut
-```
-
-Checksum:
+Do not create the release ZIP manually. Use the verified packaging helper from the exact release commit:
 
 ```powershell
-(Get-FileHash .\VFRFastCut-v0.4.15-Windows-x64.zip -Algorithm SHA256).Hash.ToLower() |
-    Set-Content .\VFRFastCut-v0.4.15-Windows-x64.zip.sha256 -Encoding ascii
+powershell.exe -NoProfile -ExecutionPolicy Bypass `
+  -File ".\tools\release\package-portable.ps1" `
+  -DistDir ".\dist\VFRFastCut" `
+  -RuntimeDir ".\tools\ffmpeg-minimal\runtime" `
+  -OutputDir "."
 ```
+
+The helper copies the complete verified FFmpeg runtime, runs the portable audit, starts bundled FFmpeg/FFprobe, creates the ZIP, re-opens the archive to verify required executables and writes the SHA-256 file.
 
 Also calculate and record SHA-256 for each source archive published with the release.
 
@@ -276,8 +275,8 @@ Also calculate and record SHA-256 for each source archive published with the rel
 Binary assets:
 
 ```text
-VFRFastCut-v0.4.15-Windows-x64.zip
-VFRFastCut-v0.4.15-Windows-x64.zip.sha256
+VFRFastCut-v0.5.0-Windows-x64.zip
+VFRFastCut-v0.5.0-Windows-x64.zip.sha256
 ```
 
 Required source/compliance assets for the shipped build:
