@@ -1,17 +1,22 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Sergilol
 
-"""Reusable keyframe analysis and lossless range snapping for VFR FastCut.
+"""Reusable keyframe/timestamp analysis and lossless range helpers.
 
-The module deliberately has no Qt dependency.  Both the GUI preview layer and
-LosslessExporter can use the same keyframe map and the same snapping rules.
+The module deliberately has no Qt dependency. Both the GUI preview layer and
+LosslessExporter can share keyframe maps, snapping rules and stream-copy
+timestamp diagnostics.
 """
 
 from __future__ import annotations
 
 import bisect
+import json
+import math
 import subprocess
 import threading
+from dataclasses import dataclass
+from fractions import Fraction
 from pathlib import Path
 from typing import Callable, Optional
 
@@ -25,6 +30,243 @@ class KeyframeScanError(RuntimeError):
 
 
 ProgressCallback = Callable[[int], None]
+
+
+class TimestampRepairProbeError(RuntimeError):
+    """Raised when ffprobe cannot inspect video packet timestamps."""
+
+
+@dataclass(frozen=True)
+class VideoTimestampRepairPlan:
+    """Describe a packet-level DTS repair for stream-copy video.
+
+    Some Matroska sources with reordered B-frames expose packet DTS values that
+    are effectively copied from PTS. Their DTS therefore move backwards in
+    decode order. A normal FFmpeg remux clamps those timestamps, which can give
+    multiple frames the same PTS and make nominal 60 fps footage play near
+    20 fps.
+
+    The repair keeps presentation timestamps untouched and synthesizes only a
+    monotonic decode timeline with FFmpeg's setts bitstream filter.
+    """
+
+    required: bool = False
+    frame_rate_expr: str = ""
+    frame_rate: float = 0.0
+    guard_frames: int = 0
+    pts_regressions: int = 0
+    dts_regressions: int = 0
+
+    @property
+    def filter_spec(self) -> str:
+        if (
+            not self.required
+            or not self.frame_rate_expr
+            or self.frame_rate <= 0.0
+        ):
+            return ""
+        guard = max(1, int(self.guard_frames))
+        return (
+            "setts=pts=PTS:"
+            f"dts=(N-{guard})/(({self.frame_rate_expr})*TB)"
+        )
+
+
+def _timestamp_float(value) -> Optional[float]:
+    try:
+        result = float(value)
+    except (TypeError, ValueError):
+        return None
+    return result if math.isfinite(result) else None
+
+
+def _parse_frame_rate(value) -> Optional[tuple[str, float]]:
+    if value in (None, "", "0/0", "N/A"):
+        return None
+    try:
+        fraction = Fraction(str(value))
+    except (ValueError, ZeroDivisionError):
+        return None
+    if fraction <= 0:
+        return None
+    rate = float(fraction)
+    if not math.isfinite(rate) or rate < 0.1 or rate > 2000.0:
+        return None
+    return f"{fraction.numerator}/{fraction.denominator}", rate
+
+
+def _choose_frame_rate(
+    stream: dict,
+    packet_pts: list[float],
+) -> Optional[tuple[str, float]]:
+    nominal = _parse_frame_rate(stream.get("r_frame_rate"))
+    average = _parse_frame_rate(stream.get("avg_frame_rate"))
+
+    # r_frame_rate can be an enormous time-base-derived value for some VFR
+    # files. Prefer it when plausible because it is a useful upper cadence for
+    # a synthetic decode timeline, but reject obvious outliers.
+    if nominal and average:
+        if nominal[1] > max(240.0, average[1] * 4.0):
+            return average
+        return nominal
+    if nominal:
+        return nominal
+    if average:
+        return average
+
+    unique_pts = sorted(set(packet_pts))
+    if len(unique_pts) >= 2:
+        span = unique_pts[-1] - unique_pts[0]
+        if span > 0.000001:
+            rate = (len(unique_pts) - 1) / span
+            if 0.1 <= rate <= 2000.0 and math.isfinite(rate):
+                fraction = Fraction(rate).limit_denominator(100000)
+                return (
+                    f"{fraction.numerator}/{fraction.denominator}",
+                    float(fraction),
+                )
+    return None
+
+
+def analyze_video_timestamps(
+    stream: dict,
+    packets: list[dict],
+) -> VideoTimestampRepairPlan:
+    """Detect non-monotonic decode timestamps and build a safe repair plan.
+
+    A valid B-frame stream may have non-monotonic PTS in packet/decode order,
+    but DTS must remain monotonic. The problematic Matroska case seen in OBS
+    recordings reports DTS == PTS, so both move backwards. Repair is enabled
+    only when DTS regress, or when DTS are unavailable while PTS clearly show
+    frame reordering.
+    """
+    pts_values: list[float] = []
+    indexed_pts: list[tuple[int, float]] = []
+    previous_pts: Optional[float] = None
+    previous_dts: Optional[float] = None
+    pts_regressions = 0
+    dts_regressions = 0
+    dts_count = 0
+
+    for index, packet in enumerate(packets):
+        pts = _timestamp_float(packet.get("pts_time"))
+        dts = _timestamp_float(packet.get("dts_time"))
+
+        if pts is not None:
+            pts_values.append(pts)
+            indexed_pts.append((index, pts))
+            if previous_pts is not None and pts < previous_pts - 0.000001:
+                pts_regressions += 1
+            previous_pts = pts
+
+        if dts is not None:
+            dts_count += 1
+            if previous_dts is not None and dts < previous_dts - 0.000001:
+                dts_regressions += 1
+            previous_dts = dts
+
+    required = dts_regressions > 0 or (
+        dts_count < 2 and pts_regressions > 0
+    )
+    if not required:
+        return VideoTimestampRepairPlan(
+            pts_regressions=pts_regressions,
+            dts_regressions=dts_regressions,
+        )
+
+    rate_info = _choose_frame_rate(stream, pts_values)
+    if rate_info is None or not indexed_pts:
+        raise TimestampRepairProbeError(
+            "Video DTS are non-monotonic, but frame rate could not be resolved"
+        )
+
+    frame_rate_expr, frame_rate = rate_info
+    first_pts = indexed_pts[0][1]
+
+    # Estimate how far decode order can run ahead of presentation order.
+    # Round onto the nominal frame grid to absorb millisecond Matroska
+    # timestamp quantization (e.g. 16/17 ms for 60 fps). One extra frame is
+    # kept as safety headroom; at least two frames matches common B-frame GOPs.
+    max_decode_lead = 0
+    for index, pts in indexed_pts:
+        presentation_index = int(round((pts - first_pts) * frame_rate))
+        max_decode_lead = max(max_decode_lead, index - presentation_index)
+
+    guard_frames = max(2, max_decode_lead + 1)
+
+    return VideoTimestampRepairPlan(
+        required=True,
+        frame_rate_expr=frame_rate_expr,
+        frame_rate=frame_rate,
+        guard_frames=guard_frames,
+        pts_regressions=pts_regressions,
+        dts_regressions=dts_regressions,
+    )
+
+
+def probe_video_timestamp_repair(
+    ffprobe: str,
+    input_path: str,
+    *,
+    max_packets: int = 512,
+) -> VideoTimestampRepairPlan:
+    """Inspect a short packet sample and return a stream-copy repair plan."""
+    if not ffprobe:
+        raise TimestampRepairProbeError("ffprobe executable is not available")
+
+    source = Path(input_path)
+    if not source.is_file():
+        raise TimestampRepairProbeError(f"Input file not found: {input_path}")
+
+    max_packets = max(32, min(4096, int(max_packets)))
+    cmd = [
+        ffprobe,
+        "-v", "error",
+        "-select_streams", "v:0",
+        "-read_intervals", f"%+#{max_packets}",
+        "-show_streams",
+        "-show_packets",
+        "-show_entries",
+        "stream=r_frame_rate,avg_frame_rate:packet=pts_time,dts_time",
+        "-of", "json",
+        str(source),
+    ]
+
+    creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+    try:
+        completed = subprocess.run(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            creationflags=creationflags,
+            timeout=20.0,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise TimestampRepairProbeError(str(exc)) from exc
+
+    if completed.returncode != 0:
+        details = (completed.stderr or "").strip()[-2000:]
+        raise TimestampRepairProbeError(
+            details or f"ffprobe error code {completed.returncode}"
+        )
+
+    try:
+        payload = json.loads(completed.stdout or "{}")
+    except json.JSONDecodeError as exc:
+        raise TimestampRepairProbeError(
+            "ffprobe returned invalid timestamp metadata"
+        ) from exc
+
+    streams = payload.get("streams") or []
+    packets = payload.get("packets") or []
+    if not streams or not packets:
+        return VideoTimestampRepairPlan()
+
+    return analyze_video_timestamps(streams[0], packets)
 
 
 def _terminate_and_reap(proc: subprocess.Popen, timeout: float = 1.0) -> None:

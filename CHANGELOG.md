@@ -2,6 +2,16 @@
 
 All notable changes to VFR FastCut are documented here.
 
+## 0.5.1
+
+### Critical stream-copy timing fix
+
+- Fixed severe frame-pacing corruption when remuxing some Matroska HEVC/H.264 recordings with reordered B-frames and non-monotonic/missing decode timestamps.
+- Added a lightweight packet-timestamp probe before video export. Valid streams keep the existing fast path unchanged.
+- Problematic streams now preserve original presentation timestamps (PTS) while FFmpeg's packet-level setts bitstream filter reconstructs a monotonic decode timeline (DTS), without re-encoding video.
+- Applied the repair consistently to single-range, multi-range, audio-processing and final concat/remux paths so temporary Matroska parts cannot reintroduce duplicate PTS.
+- Added regression tests for broken Matroska-style DTS, valid B-frame DTS, VFR-rate fallback and repair-filter generation.
+
 ## 0.5.0
 
 ### Keyframe-aware editing and preview

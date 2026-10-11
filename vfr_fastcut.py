@@ -21,6 +21,9 @@ from typing import Optional
 from vfr_keyframes import (
     KeyframeScanCancelled,
     KeyframeScanError,
+    TimestampRepairProbeError,
+    VideoTimestampRepairPlan,
+    probe_video_timestamp_repair,
     scan_video_keyframes,
     resolve_preview_playback_position,
     snap_ranges_to_keyframes,
@@ -59,7 +62,7 @@ from PySide6.QtWidgets import (
 )
 
 APP_NAME = "VFR FastCut"
-APP_VERSION = "0.5.0"
+APP_VERSION = "0.5.1"
 
 SUPPORTED_VIDEO_SUFFIXES = frozenset({
     ".mp4",
@@ -2487,9 +2490,47 @@ class LosslessExporter:
         self._used_single_track_main_mix_copy = False
         self._process_lock = threading.Lock()
         self._active_process: Optional[subprocess.Popen] = None
+        self._video_timestamp_probe_done = False
+        self._video_timestamp_repair = VideoTimestampRepairPlan()
 
     def _t(self, key: str, **kwargs) -> str:
         return ui_text(self.language, key, **kwargs)
+
+    def _ensure_video_timestamp_repair(self) -> VideoTimestampRepairPlan:
+        if self._video_timestamp_probe_done or not self.export_video:
+            return self._video_timestamp_repair
+
+        self._video_timestamp_probe_done = True
+        try:
+            self._video_timestamp_repair = probe_video_timestamp_repair(
+                self.ffprobe,
+                self.input_path,
+            )
+        except TimestampRepairProbeError:
+            # Timestamp probing is a defensive compatibility layer. If a
+            # source cannot be inspected, preserve the established export path
+            # instead of turning a diagnostic failure into an export failure.
+            self._video_timestamp_repair = VideoTimestampRepairPlan()
+        return self._video_timestamp_repair
+
+    def _video_timestamp_output_args(
+        self,
+        *,
+        force_non_negative: bool = False,
+    ) -> list[str]:
+        args: list[str] = []
+        if self.export_video:
+            plan = self._ensure_video_timestamp_repair()
+            if plan.required and plan.filter_spec:
+                args += ["-bsf:v", plan.filter_spec]
+                # The generated decode timeline starts slightly before zero so
+                # reordered B-frames keep legal DTS <= PTS. Shift every stream
+                # together at mux time; presentation intervals stay unchanged.
+                force_non_negative = True
+
+        if force_non_negative:
+            args += ["-avoid_negative_ts", "make_zero"]
+        return args
 
     def _set_active_process(self, proc: Optional[subprocess.Popen]):
         with self._process_lock:
@@ -2976,8 +3017,9 @@ class LosslessExporter:
             cmd += ["-map_metadata", "0"]
             cmd += codec_args
 
-        if start > 0.001:
-            cmd += ["-avoid_negative_ts", "make_zero"]
+        cmd += self._video_timestamp_output_args(
+            force_non_negative=start > 0.001,
+        )
         cmd += [str(output)]
         self._run(cmd)
 
@@ -3101,8 +3143,9 @@ class LosslessExporter:
         ]
         cmd += self._main_mix_metadata_args()
 
-        if start > 0.001:
-            cmd += ["-avoid_negative_ts", "make_zero"]
+        cmd += self._video_timestamp_output_args(
+            force_non_negative=start > 0.001,
+        )
         cmd += [str(output)]
 
         self._used_single_track_main_mix_copy = True
@@ -3213,8 +3256,9 @@ class LosslessExporter:
             cmd += ["-t", f"{duration:.6f}", "-c", "copy"]
             if primary_input_index is not None:
                 cmd += ["-map_metadata", str(primary_input_index)]
-            if primary_is_original and start > 0.001:
-                cmd += ["-avoid_negative_ts", "make_zero"]
+            cmd += self._video_timestamp_output_args(
+                force_non_negative=primary_is_original and start > 0.001,
+            )
             cmd += [str(output)]
             self._run(cmd)
             return
@@ -3304,8 +3348,9 @@ class LosslessExporter:
         if primary_input_index is not None:
             cmd += ["-map_metadata", str(primary_input_index)]
         cmd += self._main_mix_metadata_args()
-        if primary_is_original and start > 0.001:
-            cmd += ["-avoid_negative_ts", "make_zero"]
+        cmd += self._video_timestamp_output_args(
+            force_non_negative=primary_is_original and start > 0.001,
+        )
         cmd += [str(output)]
         self._run(cmd)
 
@@ -3390,6 +3435,7 @@ class LosslessExporter:
                 ]
                 cmd += self._stream_map_args(original_input=False)
                 cmd += ["-c", "copy"]
+                cmd += self._video_timestamp_output_args()
                 cmd += self._main_mix_metadata_args()
                 if staging.suffix.lower() == ".mp4":
                     cmd += ["-movflags", "+faststart"]
@@ -3478,8 +3524,9 @@ class LosslessExporter:
             "-c", "copy",
         ]
 
-        if start is not None and start > 0.001:
-            cmd += ["-avoid_negative_ts", "make_zero"]
+        cmd += self._video_timestamp_output_args(
+            force_non_negative=start is not None and start > 0.001,
+        )
 
         if output.suffix.lower() == ".mp4":
             cmd += ["-movflags", "+faststart"]
@@ -3495,6 +3542,10 @@ class LosslessExporter:
             self._check_cancelled()
             if not self.export_video and not self.export_audio:
                 raise RuntimeError(self._t("export_no_streams"))
+
+            if self.export_video:
+                self.signals.progress.emit(2, self._t("task_export_preparing"))
+                self._ensure_video_timestamp_repair()
 
             out.parent.mkdir(parents=True, exist_ok=True)
             staging = self._make_staging_output(out)
@@ -3638,9 +3689,11 @@ class LosslessExporter:
                     cmd += [
                         "-map_metadata", "0",
                         "-c", "copy",
-                        "-avoid_negative_ts", "make_zero",
-                        str(part),
                     ]
+                    cmd += self._video_timestamp_output_args(
+                        force_non_negative=True,
+                    )
+                    cmd += [str(part)]
                     self._run(cmd)
 
                 self._check_cancelled()
@@ -3671,6 +3724,7 @@ class LosslessExporter:
                 cmd += [
                     "-c", "copy",
                 ]
+                cmd += self._video_timestamp_output_args()
 
                 if staging.suffix.lower() == ".mp4":
                     cmd += ["-movflags", "+faststart"]
