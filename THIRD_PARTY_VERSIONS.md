@@ -4,6 +4,53 @@ This file records third-party component versions used for packaged VFR FastCut b
 
 It complements `THIRD_PARTY_NOTICES.md` and the license texts in `LICENSES/`. It is not a substitute for the license terms that apply to redistributed third-party binaries.
 
+## VFR FastCut v0.5.1 — Windows x64
+
+v0.5.1 is a hotfix release and keeps the same Python, PySide6/Qt and FFmpeg source versions as v0.5.0. The project FFmpeg 9.0.2 runtime is rebuilt with the packet-level `setts` bitstream filter enabled for the stream-copy timestamp repair.
+
+### Build environment
+
+- Python: `3.14.5`
+- PyInstaller: `6.21.0`
+- PyInstaller hooks contrib: `2026.8`
+- PySide6: `6.11.2`
+- Qt: `6.11.2`
+- Project FFmpeg / FFprobe: `9.0.2`
+- Project FFmpeg compiler: `gcc.exe (Rev5, Built by MSYS2 project) 16.2.0`
+
+### Project FFmpeg / FFprobe runtime
+
+- Source: `https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz`
+- Source SHA-256: `8c3850283eb25fa026482078a04051e0be17347b09ef81a0849bec15a96e002e`
+- Build environment: MSYS2 UCRT64
+- Linkage: shared FFmpeg libraries
+- Recorded build license target: LGPL v2.1 or later
+- `--disable-gpl`
+- `--disable-nonfree`
+- `--disable-version3`
+- `--disable-autodetect`
+- `--enable-bsf=setts`
+
+The complete configure flags and exact runtime package metadata are generated into `ffmpeg\bin\BUILD_INFO.txt`.
+
+### MinGW runtime DLLs bundled with the project FFmpeg runtime
+
+- `libwinpthread-1.dll`: `mingw-w64-ucrt-x86_64-libwinpthread 14.0.0.r426.g4564ee4b5-1`
+- `libgcc_s_seh-1.dll`: `mingw-w64-ucrt-x86_64-libgcc 16.2.0-5`
+
+### Required source/compliance assets
+
+The Qt/PySide6 and Qt Multimedia runtime versions are unchanged from v0.5.0. Publish the corresponding source archives with the v0.5.1 binary release:
+
+- `ffmpeg-9.0.2-source.tar.xz`
+- `ffmpeg-7.1.3.tar.xz`
+- `qtbase-everywhere-src-6.11.2.tar.xz`
+- `qtmultimedia-everywhere-src-6.11.2.tar.xz`
+- `qtsvg-everywhere-src-6.11.2.tar.xz`
+- `pyside-setup-everywhere-src-6.11.2.tar.xz`
+
+The Qt/PySide6 source hashes and component details are unchanged from the v0.5.0 section below. The recorded SHA-256 for `ffmpeg-7.1.3.tar.xz` is `f0bf043299db9e3caacb435a712fc541fbb07df613c4b893e8b77e67baf3adbe`.
+
 ## VFR FastCut v0.5.0 — Windows x64
 
 ### Build environment

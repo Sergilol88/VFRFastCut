@@ -1,10 +1,10 @@
 # Building VFR FastCut on Windows
 
-This document describes the **v0.5.0 Windows x64 release build**.
+This document describes the **v0.5.1 Windows x64 release build**.
 
 ## 1. Release environment
 
-Recorded v0.5.0 build environment:
+Recorded v0.5.1 build environment:
 
 ```text
 Python      3.14.5
@@ -13,7 +13,7 @@ PySide6     6.11.2
 Qt          6.11.2
 FFmpeg      9.0.2 (project export runtime)
 MSYS2       UCRT64
-GCC         16.2.0 (Rev4, Built by MSYS2 project)
+GCC         16.2.0 (Rev5, Built by MSYS2 project)
 ```
 
 The exact MSYS2 runtime package owners and versions are recorded dynamically in `tools\ffmpeg-minimal\runtime\BUILD_INFO.txt` by the FFmpeg build. Do not hard-code an old GCC runtime package name here: current MSYS2 can split/rename runtime packages while the produced DLL set remains valid.
@@ -62,7 +62,7 @@ The exact FFmpeg source archive used by the build is retained as:
 tools\ffmpeg-minimal\ffmpeg-9.0.2-source.tar.xz
 ```
 
-The v0.5.0 build intentionally keeps GPL/nonfree/version3 features disabled and enables only the demuxers, audio decoders, AAC encoder and audio filters needed by VFR FastCut.
+The v0.5.1 build intentionally keeps GPL/nonfree/version3 features disabled and enables only the demuxers, audio decoders, AAC encoder, audio filters and the `setts` bitstream filter needed by VFR FastCut.
 
 Verify the runtime from PowerShell with a representative real VFR/Twitch file:
 
@@ -89,7 +89,7 @@ Before publication:
 
 PyInstaller's bootloader exception allows the generated application bundle to be shipped under the application's own license, subject to dependency licenses; PyInstaller does not require its own license file to be included in the application bundle.
 
-The v0.5.0 packaging helper prunes optional QtPdf, QML, Quick and VirtualKeyboard artifacts that generic PyInstaller hooks collect but VFR FastCut does not use. After pruning, the retained Qt/PySide6 families are covered by:
+The v0.5.1 packaging helper prunes optional QtPdf, QML, Quick and VirtualKeyboard artifacts that generic PyInstaller hooks collect but VFR FastCut does not use. After pruning, the retained Qt/PySide6 families are covered by:
 
 ```text
 qtbase-everywhere-src-6.11.2.tar.xz
@@ -251,7 +251,7 @@ Rename-Item C:\ffmpeg_BACKUP C:\ffmpeg
 The release commit must contain:
 
 ```text
-APP_VERSION = "0.5.0"
+APP_VERSION = "0.5.1"
 ```
 
 Run:
@@ -269,8 +269,8 @@ Build the final portable package from that exact release commit.
 Binary assets:
 
 ```text
-VFRFastCut-v0.5.0-Windows-x64.zip
-VFRFastCut-v0.5.0-Windows-x64.zip.sha256
+VFRFastCut-v0.5.1-Windows-x64.zip
+VFRFastCut-v0.5.1-Windows-x64.zip.sha256
 ```
 
 Required source/compliance assets for the shipped build:
