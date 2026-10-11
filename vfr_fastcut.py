@@ -2517,11 +2517,15 @@ class LosslessExporter:
         self,
         *,
         force_non_negative: bool = False,
+        matroska_input: bool = False,
     ) -> list[str]:
         args: list[str] = []
         if self.export_video:
             plan = self._ensure_video_timestamp_repair()
-            if plan.required and plan.filter_spec:
+            needs_repair = plan.required or (
+                matroska_input and plan.reordered_pts
+            )
+            if needs_repair and plan.filter_spec:
                 args += ["-bsf:v", plan.filter_spec]
                 # The generated decode timeline starts slightly before zero so
                 # reordered B-frames keep legal DTS <= PTS. Shift every stream
@@ -3258,6 +3262,10 @@ class LosslessExporter:
                 cmd += ["-map_metadata", str(primary_input_index)]
             cmd += self._video_timestamp_output_args(
                 force_non_negative=primary_is_original and start > 0.001,
+                matroska_input=(
+                    primary_input_index is not None
+                    and not primary_is_original
+                ),
             )
             cmd += [str(output)]
             self._run(cmd)
@@ -3350,6 +3358,10 @@ class LosslessExporter:
         cmd += self._main_mix_metadata_args()
         cmd += self._video_timestamp_output_args(
             force_non_negative=primary_is_original and start > 0.001,
+            matroska_input=(
+                primary_input_index is not None
+                and not primary_is_original
+            ),
         )
         cmd += [str(output)]
         self._run(cmd)
@@ -3435,7 +3447,9 @@ class LosslessExporter:
                 ]
                 cmd += self._stream_map_args(original_input=False)
                 cmd += ["-c", "copy"]
-                cmd += self._video_timestamp_output_args()
+                cmd += self._video_timestamp_output_args(
+                    matroska_input=True,
+                )
                 cmd += self._main_mix_metadata_args()
                 if staging.suffix.lower() == ".mp4":
                     cmd += ["-movflags", "+faststart"]
@@ -3724,7 +3738,9 @@ class LosslessExporter:
                 cmd += [
                     "-c", "copy",
                 ]
-                cmd += self._video_timestamp_output_args()
+                cmd += self._video_timestamp_output_args(
+                    matroska_input=True,
+                )
 
                 if staging.suffix.lower() == ".mp4":
                     cmd += ["-movflags", "+faststart"]
