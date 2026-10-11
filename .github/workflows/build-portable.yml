@@ -259,30 +259,39 @@ jobs:
         shell: pwsh
         run: |
           $tag = "v$env:APP_VERSION"
-          $notes = ".\release-notes\$tag.md"
-          if (-not (Test-Path $notes -PathType Leaf)) {
-            throw "Release notes not found: $notes"
-          }
+          $notesInput = ".\release-notes\$tag.md"
+          $portableInput = ".\release-assets\VFRFastCut-$tag-Windows-x64.zip"
+          $checksumInput = "$portableInput.sha256"
+          $projectFfmpegInput = ".\release-assets\tools\ffmpeg-minimal\ffmpeg-9.0.2-source.tar.xz"
 
-          $portable = ".\release-assets\VFRFastCut-$tag-Windows-x64.zip"
-          $checksum = "$portable.sha256"
-          $projectFfmpeg = ".\release-assets\tools\ffmpeg-minimal\ffmpeg-9.0.2-source.tar.xz"
-
-          foreach ($required in @($portable, $checksum, $projectFfmpeg)) {
-            if (-not (Test-Path $required -PathType Leaf)) {
-              throw "Required release asset missing: $required"
-            }
-          }
-
-          $assets = @(
-            $portable,
-            $checksum,
-            $projectFfmpeg,
+          $required = @(
+            $notesInput,
+            $portableInput,
+            $checksumInput,
+            $projectFfmpegInput,
             ".\release-assets\ffmpeg-7.1.3.tar.xz",
             ".\release-assets\qtbase-everywhere-src-6.11.2.tar.xz",
             ".\release-assets\qtmultimedia-everywhere-src-6.11.2.tar.xz",
             ".\release-assets\qtsvg-everywhere-src-6.11.2.tar.xz",
             ".\release-assets\pyside-setup-everywhere-src-6.11.2.tar.xz"
+          )
+
+          foreach ($path in $required) {
+            if (-not (Test-Path $path -PathType Leaf)) {
+              throw "Required release file missing: $path"
+            }
+          }
+
+          $notes = (Resolve-Path $notesInput).Path
+          $assets = @(
+            (Resolve-Path $portableInput).Path,
+            (Resolve-Path $checksumInput).Path,
+            (Resolve-Path $projectFfmpegInput).Path,
+            (Resolve-Path ".\release-assets\ffmpeg-7.1.3.tar.xz").Path,
+            (Resolve-Path ".\release-assets\qtbase-everywhere-src-6.11.2.tar.xz").Path,
+            (Resolve-Path ".\release-assets\qtmultimedia-everywhere-src-6.11.2.tar.xz").Path,
+            (Resolve-Path ".\release-assets\qtsvg-everywhere-src-6.11.2.tar.xz").Path,
+            (Resolve-Path ".\release-assets\pyside-setup-everywhere-src-6.11.2.tar.xz").Path
           )
 
           gh release create $tag @assets --target $env:GITHUB_SHA --title "VFR FastCut $tag" --notes-file $notes --latest
