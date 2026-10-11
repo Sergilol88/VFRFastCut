@@ -170,7 +170,7 @@ class TimestampRepairTests(unittest.TestCase):
     def test_unresolvable_rate_raises_only_for_broken_timestamps(self):
         packets = [
             {"pts_time": "0.0", "dts_time": "0.0"},
-            {"pts_time": "-1.0", "dts_time": "-1.0"},
+            {"pts_time": "0.0", "dts_time": "-1.0"},
         ]
         with self.assertRaises(TimestampRepairProbeError):
             analyze_video_timestamps({}, packets)
