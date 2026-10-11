@@ -57,7 +57,7 @@ foreach ($required in @('volume', 'afade', 'aformat', 'amix', 'alimiter', 'adela
 }
 
 $bsfs = & $Ffmpeg -hide_banner -bsfs 2>&1 | Out-String
-if ($bsfs -notmatch "(?m)^setts\s*$") {
+if ($bsfs -notmatch "(?m)^\s*setts\s*$") {
     throw "Required video timestamp bitstream filter missing: setts"
 }
 
