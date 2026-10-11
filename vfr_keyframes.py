@@ -197,7 +197,7 @@ def analyze_video_timestamps(
     guard_frames = max(2, max_decode_lead + 1)
 
     return VideoTimestampRepairPlan(
-        required=True,
+        required=required,
         frame_rate_expr=frame_rate_expr,
         frame_rate=frame_rate,
         guard_frames=guard_frames,
