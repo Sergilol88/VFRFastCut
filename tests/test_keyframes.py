@@ -124,9 +124,13 @@ class TimestampRepairTests(unittest.TestCase):
             self._packets(pts, dts),
         )
         self.assertFalse(plan.required)
+        self.assertTrue(plan.reordered_pts)
         self.assertEqual(plan.dts_regressions, 0)
         self.assertGreater(plan.pts_regressions, 0)
-        self.assertEqual(plan.filter_spec, "")
+        self.assertEqual(
+            plan.filter_spec,
+            "setts=pts=PTS:dts=(N-2)/((60/1)*TB)",
+        )
 
     def test_monotonic_video_is_left_untouched(self):
         pts = [0.000, 0.017, 0.033, 0.050]
@@ -135,6 +139,8 @@ class TimestampRepairTests(unittest.TestCase):
             self._packets(pts, pts),
         )
         self.assertFalse(plan.required)
+        self.assertFalse(plan.reordered_pts)
+        self.assertEqual(plan.filter_spec, "")
 
     def test_absurd_nominal_rate_falls_back_to_average_rate(self):
         stream = {
