@@ -54,13 +54,14 @@ class VideoTimestampRepairPlan:
     frame_rate_expr: str = ""
     frame_rate: float = 0.0
     guard_frames: int = 0
+    reordered_pts: bool = False
     pts_regressions: int = 0
     dts_regressions: int = 0
 
     @property
     def filter_spec(self) -> str:
         if (
-            not self.required
+            not (self.required or self.reordered_pts)
             or not self.frame_rate_expr
             or self.frame_rate <= 0.0
         ):
@@ -165,10 +166,11 @@ def analyze_video_timestamps(
                 dts_regressions += 1
             previous_dts = dts
 
+    reordered_pts = pts_regressions > 0
     required = dts_regressions > 0 or (
-        dts_count < 2 and pts_regressions > 0
+        dts_count < 2 and reordered_pts
     )
-    if not required:
+    if not required and not reordered_pts:
         return VideoTimestampRepairPlan(
             pts_regressions=pts_regressions,
             dts_regressions=dts_regressions,
@@ -177,7 +179,7 @@ def analyze_video_timestamps(
     rate_info = _choose_frame_rate(stream, pts_values)
     if rate_info is None or not indexed_pts:
         raise TimestampRepairProbeError(
-            "Video DTS are non-monotonic, but frame rate could not be resolved"
+            "Video packet reordering was detected, but frame rate could not be resolved"
         )
 
     frame_rate_expr, frame_rate = rate_info
@@ -199,6 +201,7 @@ def analyze_video_timestamps(
         frame_rate_expr=frame_rate_expr,
         frame_rate=frame_rate,
         guard_frames=guard_frames,
+        reordered_pts=reordered_pts,
         pts_regressions=pts_regressions,
         dts_regressions=dts_regressions,
     )
