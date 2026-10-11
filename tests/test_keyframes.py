@@ -3,6 +3,8 @@
 import unittest
 
 from vfr_keyframes import (
+    TimestampRepairProbeError,
+    analyze_video_timestamps,
     resolve_preview_playback_position,
     snap_range_to_keyframes,
     snap_ranges_to_keyframes,
@@ -83,6 +85,101 @@ class EditedPreviewRangeTests(unittest.TestCase):
         index, target = resolve_preview_playback_position([], 3.0)
         self.assertEqual(index, -1)
         self.assertIsNone(target)
+
+
+class TimestampRepairTests(unittest.TestCase):
+    def setUp(self):
+        self.stream_60 = {
+            "r_frame_rate": "60/1",
+            "avg_frame_rate": "60/1",
+        }
+
+    @staticmethod
+    def _packets(pts_values, dts_values):
+        return [
+            {"pts_time": str(pts), "dts_time": str(dts)}
+            for pts, dts in zip(pts_values, dts_values)
+        ]
+
+    def test_matroska_style_dts_equal_pts_is_repaired(self):
+        pts = [0.000, 0.050, 0.017, 0.033, 0.100, 0.067, 0.083]
+        plan = analyze_video_timestamps(
+            self.stream_60,
+            self._packets(pts, pts),
+        )
+        self.assertTrue(plan.required)
+        self.assertGreater(plan.dts_regressions, 0)
+        self.assertEqual(plan.frame_rate_expr, "60/1")
+        self.assertEqual(plan.guard_frames, 2)
+        self.assertEqual(
+            plan.filter_spec,
+            "setts=pts=PTS:dts=(N-2)/((60/1)*TB)",
+        )
+
+    def test_valid_b_frame_dts_are_left_untouched(self):
+        pts = [0.000, 0.050, 0.017, 0.033, 0.100, 0.067, 0.083]
+        dts = [-0.033, -0.017, 0.000, 0.017, 0.033, 0.050, 0.067]
+        plan = analyze_video_timestamps(
+            self.stream_60,
+            self._packets(pts, dts),
+        )
+        self.assertFalse(plan.required)
+        self.assertTrue(plan.reordered_pts)
+        self.assertEqual(plan.dts_regressions, 0)
+        self.assertGreater(plan.pts_regressions, 0)
+        self.assertEqual(
+            plan.filter_spec,
+            "setts=pts=PTS:dts=(N-2)/((60/1)*TB)",
+        )
+
+    def test_monotonic_video_is_left_untouched(self):
+        pts = [0.000, 0.017, 0.033, 0.050]
+        plan = analyze_video_timestamps(
+            self.stream_60,
+            self._packets(pts, pts),
+        )
+        self.assertFalse(plan.required)
+        self.assertFalse(plan.reordered_pts)
+        self.assertEqual(plan.filter_spec, "")
+
+    def test_absurd_nominal_rate_falls_back_to_average_rate(self):
+        stream = {
+            "r_frame_rate": "1000/1",
+            "avg_frame_rate": "60/1",
+        }
+        pts = [0.000, 0.050, 0.017, 0.033, 0.100, 0.067, 0.083]
+        plan = analyze_video_timestamps(
+            stream,
+            self._packets(pts, pts),
+        )
+        self.assertTrue(plan.required)
+        self.assertEqual(plan.frame_rate_expr, "60/1")
+
+    def test_missing_rate_uses_pts_span_fallback(self):
+        pts = [0.000, 0.050, 0.017, 0.033, 0.100, 0.067, 0.083]
+        plan = analyze_video_timestamps(
+            {},
+            self._packets(pts, pts),
+        )
+        self.assertTrue(plan.required)
+        self.assertGreater(plan.frame_rate, 50.0)
+        self.assertLess(plan.frame_rate, 70.0)
+
+    def test_reordered_pts_without_dts_still_requests_repair(self):
+        packets = [
+            {"pts_time": value, "dts_time": "N/A"}
+            for value in ("0.000", "0.050", "0.017", "0.033")
+        ]
+        plan = analyze_video_timestamps(self.stream_60, packets)
+        self.assertTrue(plan.required)
+
+    def test_unresolvable_rate_raises_only_for_broken_timestamps(self):
+        packets = [
+            {"pts_time": "0.0", "dts_time": "0.0"},
+            {"pts_time": "0.0", "dts_time": "-1.0"},
+        ]
+        with self.assertRaises(TimestampRepairProbeError):
+            analyze_video_timestamps({}, packets)
 
 
 if __name__ == "__main__":

@@ -96,6 +96,7 @@ CONFIGURE_FLAGS=(
   "--enable-filter=amix"
   "--enable-filter=alimiter"
   "--enable-filter=adelay"
+  "--enable-bsf=setts"
   "--disable-hwaccels"
   "--disable-devices"
   "--disable-avdevice"

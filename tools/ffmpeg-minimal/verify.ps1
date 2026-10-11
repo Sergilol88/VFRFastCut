@@ -56,6 +56,11 @@ foreach ($required in @('volume', 'afade', 'aformat', 'amix', 'alimiter', 'adela
     }
 }
 
+$bsfs = & $Ffmpeg -hide_banner -bsfs 2>&1 | Out-String
+if ($bsfs -notmatch "(?m)^\s*setts\s*$") {
+    throw "Required video timestamp bitstream filter missing: setts"
+}
+
 $muxers = & $Ffmpeg -hide_banner -muxers 2>&1 | Out-String
 foreach ($required in @('mp4', 'mov', 'matroska')) {
     if ($muxers -notmatch "(?m)^\s*E\s+[^\r\n]*\b$([regex]::Escape($required))\b") {
