@@ -266,7 +266,7 @@ jobs:
 
           $portable = ".\release-assets\VFRFastCut-$tag-Windows-x64.zip"
           $checksum = "$portable.sha256"
-          $projectFfmpeg = ".\release-assets\ffmpeg-9.0.2-source.tar.xz"
+          $projectFfmpeg = ".\release-assets\tools\ffmpeg-minimal\ffmpeg-9.0.2-source.tar.xz"
 
           foreach ($required in @($portable, $checksum, $projectFfmpeg)) {
             if (-not (Test-Path $required -PathType Leaf)) {
