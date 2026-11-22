@@ -29,6 +29,8 @@ Python, PySide6/Qt and the project FFmpeg runtime are included in the portable b
 - Designed for VFR recordings and stream VODs.
 - Timeline zoom, horizontal scrolling, playhead navigation and cut markers.
 - Background keyframe analysis with optional keyframe markers on the timeline.
+- Audio metadata is read in the background so opening a file does not block the interface.
+- Split immediately snaps the cut and playhead to the nearest interior keyframe (ties go earlier). Splitting becomes available when keyframe analysis finishes.
 - Edited-result preview: normal Play skips deleted ranges using the same effective keyframe boundaries as export, while paused manual seeking can still inspect deleted source frames.
 - Delete / restore unwanted segments.
 - Undo / Redo.
@@ -61,7 +63,7 @@ Python, PySide6/Qt and the project FFmpeg runtime are included in the portable b
 - English and Russian UI.
 - Built-in help (`F1`).
 - Compact export result dialog with expandable technical details.
-- Modeless task-progress dialogs for keyframe analysis and export; long analysis can continue while editing remains available.
+- Modeless task-progress dialogs for keyframe analysis and export; video preview remains available during analysis. Export waits for audio metadata to finish loading.
 
 ## Supported formats
 
@@ -102,7 +104,7 @@ Because the exported Main Mix contains real audio processing, "Lossless Export" 
 
 VFR FastCut does not decode and re-encode the video during normal export. FFmpeg copies already encoded video packets into the output file.
 
-Inter-frame codecs depend on keyframes, so requested video cut boundaries are snapped to suitable keyframes. The actual exported boundary can therefore differ slightly from the requested position. This is an expected limitation of stream-copy video editing.
+Inter-frame codecs depend on keyframes. Split therefore places each cut on the nearest interior keyframe immediately and moves the playhead there, so the timeline shows the boundary that video export will use. If two keyframes are equally close, the earlier one is chosen. Wait for keyframe analysis before splitting; if analysis fails, splitting remains unavailable. Export also validates boundaries using the same keyframe map.
 
 Audio-only and processed audio operations use audio packet / filter timing and are not limited by video keyframes in the same way.
 

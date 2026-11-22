@@ -2,6 +2,18 @@
 
 All notable changes to VFR FastCut are documented here.
 
+## 0.5.2
+
+### Responsive import and visible keyframe cuts
+
+- Read embedded audio metadata in a background worker with a bounded timeout instead of blocking the GUI before opening the video.
+- Start packet-level keyframe analysis immediately, without waiting for Qt to report the source duration; progress uses duration metadata when it arrives.
+- Ignore stale audio metadata after changing or resetting the source and preserve external audio added while metadata loads.
+- Wait for audio metadata before enabling export so the output uses the completed track configuration.
+- Snap Split and the playhead immediately to the nearest interior keyframe; equally close keyframes choose the earlier one.
+- Enable splitting only after the keyframe map is ready, keeping visible cuts consistent with video export boundaries.
+- Update English/Russian help and add regressions for responsive loading, worker results, splitting, export boundary stability and Undo/Redo.
+
 ## 0.5.1
 
 ### Critical stream-copy timing fix

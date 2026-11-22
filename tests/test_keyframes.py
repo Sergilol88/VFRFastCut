@@ -1,6 +1,9 @@
 # SPDX-License-Identifier: MIT
 
 import unittest
+import tempfile
+from pathlib import Path
+from unittest.mock import Mock, patch
 
 from vfr_keyframes import (
     TimestampRepairProbeError,
@@ -8,6 +11,8 @@ from vfr_keyframes import (
     resolve_preview_playback_position,
     snap_range_to_keyframes,
     snap_ranges_to_keyframes,
+    snap_cut_to_keyframe,
+    scan_video_keyframes,
 )
 
 
@@ -15,6 +20,25 @@ class KeyframeSnapTests(unittest.TestCase):
     def setUp(self):
         self.keyframes = [0.0, 2.0, 4.0, 6.0, 8.0, 10.0]
         self.duration = 10.0
+
+    def test_split_chooses_nearest_keyframe_with_earlier_tie(self):
+        self.assertEqual(snap_cut_to_keyframe(3.1, self.keyframes, 10), 4)
+        self.assertEqual(snap_cut_to_keyframe(3, self.keyframes, 10), 2)
+        self.assertEqual(snap_cut_to_keyframe(4, self.keyframes, 10), 4)
+
+    def test_split_excludes_project_edges_and_handles_missing_map(self):
+        self.assertEqual(snap_cut_to_keyframe(0.1, self.keyframes, 10), 2)
+        self.assertEqual(snap_cut_to_keyframe(9.9, self.keyframes, 10), 8)
+        self.assertIsNone(snap_cut_to_keyframe(3, [], 10))
+        self.assertIsNone(snap_cut_to_keyframe(3, [0, 10], 10))
+
+    def test_split_boundaries_do_not_move_again_during_export(self):
+        for requested in [0.1, 1.9, 3, 3.1, 7.3, 9.9]:
+            cut = snap_cut_to_keyframe(requested, self.keyframes, self.duration)
+            for kept in [[(0, cut)], [(cut, self.duration)]]:
+                ranges, shift = snap_ranges_to_keyframes(kept, self.keyframes, self.duration)
+                self.assertEqual(ranges, kept)
+                self.assertEqual(shift, 0)
 
     def test_range_snaps_inward_like_legacy_export(self):
         self.assertEqual(
@@ -49,6 +73,25 @@ class KeyframeSnapTests(unittest.TestCase):
             self.duration,
         )
         self.assertEqual(ranges, [])
+
+
+class EarlyKeyframeScanTests(unittest.TestCase):
+    def test_progress_uses_duration_that_arrives_after_scan_starts(self):
+        process = Mock()
+        process.stdout = ["0.0,K_\n", "2.0,__\n", "4.0,K_\n"]
+        process.wait.return_value = 0
+        progress = []
+        with tempfile.TemporaryDirectory() as folder:
+            source = Path(folder) / "video.mp4"
+            source.touch()
+            with patch("vfr_keyframes.subprocess.Popen", return_value=process):
+                frames = scan_video_keyframes(
+                    "ffprobe", str(source), duration=0,
+                    duration_provider=Mock(side_effect=[0, 10, 10]),
+                    progress_callback=progress.append,
+                )
+        self.assertEqual(frames, [0, 4])
+        self.assertEqual(progress, [20, 40, 100])
 
 
 class EditedPreviewRangeTests(unittest.TestCase):

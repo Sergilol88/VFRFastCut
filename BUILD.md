@@ -1,6 +1,6 @@
 # Building VFR FastCut on Windows
 
-This document describes the **v0.5.1 Windows x64 release build**.
+This document describes the **v0.5.2 Windows x64 release build**, using the same pinned dependencies as v0.5.1.
 
 ## 1. Release environment
 
@@ -251,7 +251,7 @@ Rename-Item C:\ffmpeg_BACKUP C:\ffmpeg
 The release commit must contain:
 
 ```text
-APP_VERSION = "0.5.1"
+APP_VERSION = "0.5.2"
 ```
 
 Run:
@@ -269,8 +269,8 @@ Build the final portable package from that exact release commit.
 Binary assets:
 
 ```text
-VFRFastCut-v0.5.1-Windows-x64.zip
-VFRFastCut-v0.5.1-Windows-x64.zip.sha256
+VFRFastCut-v0.5.2-Windows-x64.zip
+VFRFastCut-v0.5.2-Windows-x64.zip.sha256
 ```
 
 Required source/compliance assets for the shipped build:

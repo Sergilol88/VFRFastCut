@@ -27,6 +27,7 @@ from vfr_keyframes import (
     scan_video_keyframes,
     resolve_preview_playback_position,
     snap_ranges_to_keyframes,
+    snap_cut_to_keyframe,
 )
 
 # Qt Multimedia hardware texture conversion can produce corrupted/green preview
@@ -62,7 +63,7 @@ from PySide6.QtWidgets import (
 )
 
 APP_NAME = "VFR FastCut"
-APP_VERSION = "0.5.1"
+APP_VERSION = "0.5.2"
 
 SUPPORTED_VIDEO_SUFFIXES = frozenset({
     ".mp4",
@@ -293,7 +294,7 @@ UI_TEXT = {
         "task_export_title": "Lossless Export",
         "task_export_preparing": "Preparing export…",
         "task_keyframe_title": "Analyzing video",
-        "task_keyframe_hint": "You can continue editing while keyframes are analyzed.",
+        "task_keyframe_hint": "You can preview the video while keyframes are analyzed. Splitting is available when analysis finishes.",
         "timeline": "Timeline",
         "volume": "Volume",
         "ready": "Ready.",
@@ -315,6 +316,8 @@ UI_TEXT = {
         "segment_info": "Segment {number}: {start} → {end} ({duration}) • {state}",
         "playhead_boundary": "The playhead is already on a segment boundary.",
         "split_status": "Split: {time}",
+        "split_needs_keyframes": "Splitting requires the keyframe map. Wait for video analysis to finish.",
+        "audio_probe_pending": "Reading audio metadata…",
         "no_cut_at_playhead": "There is no cut at the playhead. Use Q/E to jump exactly to a cut.",
         "cut_state_mismatch": "This cut separates kept and deleted segments. Restore or delete both sides before removing the cut.",
         "cut_removed_status": "Cut removed: {time}",
@@ -492,7 +495,7 @@ UI_TEXT = {
         "task_export_title": "Lossless Export",
         "task_export_preparing": "Подготавливаю экспорт…",
         "task_keyframe_title": "Анализ видео",
-        "task_keyframe_hint": "Можно продолжать монтаж, пока анализируются keyframes.",
+        "task_keyframe_hint": "Пока анализируются keyframes, можно просматривать видео. Разрезы доступны после завершения анализа.",
         "timeline": "Таймлайн",
         "volume": "Громкость",
         "ready": "Готово.",
@@ -514,6 +517,8 @@ UI_TEXT = {
         "segment_info": "Фрагмент {number}: {start} → {end} ({duration}) • {state}",
         "playhead_boundary": "Playhead уже находится на границе фрагмента.",
         "split_status": "Разрез: {time}",
+        "split_needs_keyframes": "Для разреза нужна карта ключевых кадров. Дождитесь завершения анализа видео.",
+        "audio_probe_pending": "Читаю метаданные аудио…",
         "no_cut_at_playhead": "Под playhead нет разреза. Используйте Q/E, чтобы точно перейти на разрез.",
         "cut_state_mismatch": "Этот разрез разделяет оставляемый и удалённый фрагменты. Сначала восстановите или удалите обе стороны одинаково.",
         "cut_removed_status": "Разрез убран: {time}",
@@ -625,7 +630,7 @@ HELP_HTML = {
   <li>After a successful export you can open the result folder.</li>
 </ul>
 <h3>Important lossless limitation</h3>
-<p>VFR FastCut keeps video and unchanged separate audio streams in FFmpeg stream-copy mode (<b>-c copy</b>). Main Mix is encoded once to AAC and placed as the first/default audio stream; selected stems can optionally be kept after it. A stem whose volume differs from 100% or whose Fade In/Fade Out is non-zero is also filtered and encoded to AAC. Fade is applied independently to each exported kept range. When video is exported, cut boundaries are snapped to keyframes and may differ slightly from the requested position. Audio-only export does not require video keyframe snapping and cuts on audio packet boundaries.</p>
+<p>VFR FastCut keeps video and unchanged separate audio streams in FFmpeg stream-copy mode (<b>-c copy</b>). Main Mix is encoded once to AAC and placed as the first/default audio stream; selected stems can optionally be kept after it. A stem whose volume differs from 100% or whose Fade In/Fade Out is non-zero is also filtered and encoded to AAC. Fade is applied independently to each exported kept range. Split immediately moves the cut and playhead to the nearest interior keyframe (ties choose earlier). Splitting requires completed keyframe analysis. Audio-only export uses audio packet boundaries.</p>
 <h3>Hotkeys</h3>
 <table cellspacing="4" cellpadding="3">
 <tr><td><b>Ctrl+O</b></td><td>Open video</td></tr>
@@ -696,7 +701,7 @@ HELP_HTML = {
   <li>После завершения доступна кнопка <b>Открыть папку с результатом</b>.</li>
 </ul>
 <h3>Важно о Lossless</h3>
-<p>VFR FastCut сохраняет видео и неизменённые отдельные аудиодорожки в режиме FFmpeg stream copy (<b>-c copy</b>). Main Mix один раз кодируется в AAC и помещается первым аудиопотоком/дорожкой по умолчанию; выбранные stems при желании сохраняются после него. Stem с громкостью, отличной от 100%, или ненулевым Fade In/Fade Out также обрабатывается и кодируется в AAC. Fade применяется отдельно к каждому экспортируемому сохранённому диапазону. Если экспортируется видео, границы привязываются к keyframes и могут немного отличаться от выбранной позиции. При экспорте только звука keyframe-привязка не нужна: границы идут по аудиопакетам.</p>
+<p>VFR FastCut сохраняет видео и неизменённые отдельные аудиодорожки в режиме FFmpeg stream copy (<b>-c copy</b>). Main Mix один раз кодируется в AAC и помещается первым аудиопотоком/дорожкой по умолчанию; выбранные stems при желании сохраняются после него. Stem с громкостью, отличной от 100%, или ненулевым Fade In/Fade Out также обрабатывается и кодируется в AAC. Fade применяется отдельно к каждому экспортируемому сохранённому диапазону. Команда «Разрезать» сразу перемещает границу и курсор на ближайший внутренний keyframe; при равном расстоянии выбирается более ранний. Разрезы доступны после завершения анализа keyframe. При экспорте только звука границы идут по аудиопакетам.</p>
 <h3>Горячие клавиши</h3>
 <table cellspacing="4" cellpadding="3">
 <tr><td><b>Ctrl+O</b></td><td>Открыть видео</td></tr>
@@ -1109,6 +1114,7 @@ def probe_audio_tracks(
         encoding="utf-8",
         errors="replace",
         creationflags=creationflags,
+        timeout=30.0,
         check=False,
     )
 
@@ -2425,6 +2431,10 @@ class AudioTimelineWidget(QWidget):
             x = self._x_from_time(self.position)
             painter.setPen(QPen(QColor(235, 65, 65), 2))
             painter.drawLine(int(x), 0, int(x), self.height())
+
+class AudioProbeSignals(QObject):
+    finished = Signal(int, object)
+
 
 class KeyframeScanSignals(QObject):
     progress = Signal(int, int)
@@ -3971,6 +3981,8 @@ class MainWindow(QMainWindow):
         self.segments: list[Segment] = []
         self.audio_tracks: list[AudioTrack] = []
         self.audio_probe_ok = False
+        self._audio_probe_generation = 0
+        self._audio_probe_pending = False
         self.keyframes: list[float] = []
         self._edited_preview_ranges: list[tuple[float, float]] = []
         self._edited_preview_has_deletions = False
@@ -3996,6 +4008,8 @@ class MainWindow(QMainWindow):
         self.export_signals.cancelled.connect(self.on_export_cancelled)
 
         self.keyframe_scan_signals = KeyframeScanSignals(self)
+        self.audio_probe_signals = AudioProbeSignals(self)
+        self.audio_probe_signals.finished.connect(self.on_audio_probe_finished)
         self.keyframe_scan_signals.progress.connect(
             self.on_keyframe_scan_progress
         )
@@ -4748,6 +4762,8 @@ class MainWindow(QMainWindow):
         self._apply_audio_mute_state()
 
         self._cancel_keyframe_scan()
+        self._audio_probe_generation += 1
+        self._audio_probe_pending = False
         self.player.stop()
         self.player.setSource(QUrl())
         self._clear_preview_mix()
@@ -4850,37 +4866,64 @@ class MainWindow(QMainWindow):
         self.timeline.zoom = 1.0
         self.timeline.offset = 0.0
 
-        audio_probe_ok = False
-        ffprobe = find_tool("ffprobe.exe")
-        if ffprobe:
-            try:
-                self.audio_tracks = probe_audio_tracks(ffprobe, self.input_path)
-                for index, track in enumerate(self.audio_tracks):
-                    track.mix_enabled = index == 0
-                audio_probe_ok = True
-                self.audio_probe_ok = True
-            except Exception:
-                # Audio metadata is useful for editing, but a probe failure must
-                # never make an otherwise playable video impossible to open.
-                self.audio_tracks.clear()
-                self.audio_probe_ok = False
+        self._start_audio_probe()
+        # Packet scanning does not need Qt to finish loading the source first.
+        self._start_keyframe_scan()
 
         self._preview_prime_pending = True
         self.video.clear_frame()
         self.player.setSource(QUrl.fromLocalFile(str(video_path)))
         self._rebuild_preview_mix()
+        self._update_timeline()
+        self._update_ui_state()
 
-        if audio_probe_ok:
+    def _start_audio_probe(self):
+        self._audio_probe_generation += 1
+        generation = self._audio_probe_generation
+        source_path = self.input_path
+        ffprobe = find_tool("ffprobe.exe")
+        self._audio_probe_pending = bool(ffprobe)
+        if not ffprobe:
+            self.on_audio_probe_finished(generation, None)
+            return
+        signals = self.audio_probe_signals
+
+        def worker():
+            try:
+                tracks = probe_audio_tracks(ffprobe, source_path)
+            except Exception:
+                tracks = None
+            try:
+                signals.finished.emit(generation, tracks)
+            except RuntimeError:
+                pass  # Window was destroyed while the bounded probe ran.
+
+        threading.Thread(target=worker, daemon=True, name="VFRFastCutAudioProbe").start()
+        self.statusBar().showMessage(self._t("audio_probe_pending"))
+
+    def on_audio_probe_finished(self, generation: int, tracks):
+        if generation != self._audio_probe_generation:
+            return
+        self._audio_probe_pending = False
+        self.audio_probe_ok = tracks is not None
+        # Preserve external tracks added while embedded metadata was loading.
+        external = [track for track in self.audio_tracks if track.source_type == "external"]
+        embedded = list(tracks or [])
+        for index, track in enumerate(embedded):
+            track.mix_enabled = index == 0
+        self.audio_tracks = embedded + external
+        self._rebuild_preview_mix()
+        if self.audio_probe_ok:
             self.statusBar().showMessage(
                 self._t(
                     "opened_with_audio",
-                    name=video_path.name,
+                    name=Path(self.input_path).name,
                     count=len(self.audio_tracks),
                 )
             )
         else:
             self.statusBar().showMessage(
-                self._t("opened_audio_probe_failed", name=video_path.name)
+                self._t("opened_audio_probe_failed", name=Path(self.input_path).name)
             )
         self._update_timeline()
         self._update_ui_state()
@@ -4900,7 +4943,7 @@ class MainWindow(QMainWindow):
         return thread
 
     def _start_keyframe_scan(self):
-        if not self.input_path or self.duration <= 0 or self.keyframes:
+        if not self.input_path or self.keyframes:
             return
         if self.keyframe_scan_thread and self.keyframe_scan_thread.is_alive():
             return
@@ -4927,6 +4970,7 @@ class MainWindow(QMainWindow):
                     source_path,
                     duration=duration,
                     cancel_event=cancel_event,
+                    duration_provider=lambda: self.duration,
                     progress_callback=lambda pct: signals.progress.emit(
                         generation, pct
                     ),
@@ -4983,6 +5027,7 @@ class MainWindow(QMainWindow):
         )
         self.timeline.set_keyframes(self.keyframes)
         self._refresh_edited_preview_ranges()
+        self._update_ui_state()
         if not self._export_busy:
             self.statusBar().showMessage(
                 self._t("keyframe_scan_finished", count=len(self.keyframes)),
@@ -4996,6 +5041,7 @@ class MainWindow(QMainWindow):
         self.keyframes.clear()
         self.timeline.set_keyframes([])
         self._refresh_edited_preview_ranges()
+        self._update_ui_state()
         if not self._export_busy:
             self.statusBar().showMessage(
                 self._t("keyframe_scan_failed_status"),
@@ -5534,7 +5580,13 @@ class MainWindow(QMainWindow):
             return
         if not self.segments or self.duration <= 0:
             return
-        t = self.current_seconds()
+        if not self.keyframes:
+            self.statusBar().showMessage(self._t("split_needs_keyframes"), 4000)
+            return
+        t = snap_cut_to_keyframe(self.current_seconds(), self.keyframes, self.duration)
+        if t is None:
+            self.statusBar().showMessage(self._t("playhead_boundary"), 3000)
+            return
 
         idx = -1
         for i, seg in enumerate(self.segments):
@@ -5553,6 +5605,7 @@ class MainWindow(QMainWindow):
         right = Segment(t, seg.end, seg.deleted)
         self.segments[idx:idx + 1] = [left, right]
         self.selected_index = idx + 1
+        self.seek_seconds_smooth(t)
         self.select_segment(self.selected_index)
         self.statusBar().showMessage(self._t("split_status", time=fmt_time(t)), 2500)
 
@@ -5613,8 +5666,8 @@ class MainWindow(QMainWindow):
             self.split_btn.setEnabled(removable)
         else:
             self.split_btn.setText(self._t("split"))
-            self.split_btn.setToolTip("")
-            self.split_btn.setEnabled(editable)
+            self.split_btn.setToolTip("" if self.keyframes else self._t("split_needs_keyframes"))
+            self.split_btn.setEnabled(editable and bool(self.keyframes))
 
         action = getattr(self, "remove_cut_action", None)
         if action is not None:
@@ -6835,7 +6888,8 @@ class MainWindow(QMainWindow):
             or self._audio_export_enabled()
         )
 
-        self.export_btn.setEnabled(editable and streams_selected)
+        export_ready = editable and streams_selected and not self._audio_probe_pending
+        self.export_btn.setEnabled(export_ready)
         self.export_video_check.setEnabled(not self._export_busy)
         self.export_audio_check.setEnabled(not self._export_busy)
         self._refresh_audio_tracks_control()
@@ -6843,9 +6897,9 @@ class MainWindow(QMainWindow):
         # Menu actions mirror the same state without duplicating behaviour.
         self.act_open.setEnabled(not self._export_busy)
         self.act_reset.setEnabled(bool(self.input_path) and not self._export_busy)
-        self.act_export.setEnabled(editable and streams_selected)
+        self.act_export.setEnabled(export_ready)
         self.act_export_fragment.setEnabled(
-            editable and selected_valid and streams_selected
+            export_ready and selected_valid
         )
         self.act_exit.setEnabled(not self._export_busy)
 
@@ -6859,7 +6913,7 @@ class MainWindow(QMainWindow):
         self.act_zoom_out.setEnabled(ready)
         self.act_zoom_reset.setEnabled(ready)
 
-        self.act_split.setEnabled(editable)
+        self.act_split.setEnabled(editable and bool(self.keyframes))
         self._refresh_remove_cut_state()
         self.act_undo.setEnabled(editable and bool(self.undo_stack))
         self.act_redo.setEnabled(editable and bool(self.redo_stack))
@@ -6927,6 +6981,9 @@ class MainWindow(QMainWindow):
         segments: list[Segment],
         ranges_override: Optional[list[tuple[float, float]]] = None,
     ):
+        if self._audio_probe_pending:
+            self.statusBar().showMessage(self._t("audio_probe_pending"), 3000)
+            return
         export_video = self.export_video_check.isChecked()
         export_audio = self._audio_export_enabled()
         if not export_video and not export_audio:
@@ -7300,6 +7357,7 @@ class MainWindow(QMainWindow):
         )
 
     def closeEvent(self, event):
+        self._audio_probe_generation += 1
         keyframe_thread = self._cancel_keyframe_scan()
         if keyframe_thread and keyframe_thread.is_alive():
             keyframe_thread.join(timeout=0.75)

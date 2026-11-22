@@ -305,6 +305,7 @@ def scan_video_keyframes(
     interval: Optional[tuple[float, float]] = None,
     cancel_event: Optional[threading.Event] = None,
     progress_callback: Optional[ProgressCallback] = None,
+    duration_provider: Optional[Callable[[], float]] = None,
 ) -> list[float]:
     """Return sorted keyframe timestamps from the first video stream.
 
@@ -313,6 +314,7 @@ def scan_video_keyframes(
 
     ``progress_callback`` receives best-effort integer percentages.  Full-file
     scans use ``duration`` when known; interval scans use the interval length.
+    ``duration_provider`` can supply metadata that arrives after a scan starts.
     The callback is intentionally optional so the function remains useful in
     command-line/export code without any UI dependency.
     """
@@ -364,12 +366,15 @@ def scan_video_keyframes(
 
     def report_progress(pts: float) -> None:
         nonlocal last_progress
-        if progress_callback is None or progress_span <= 0.001:
+        span = progress_span
+        if interval is None and duration_provider is not None:
+            span = max(0.0, float(duration_provider()))
+        if progress_callback is None or span <= 0.001:
             return
         pct = int(
             max(
                 0.0,
-                min(100.0, ((pts - progress_start) / progress_span) * 100.0),
+                min(100.0, ((pts - progress_start) / span) * 100.0),
             )
         )
         if pct == last_progress:
@@ -431,6 +436,23 @@ def scan_video_keyframes(
     if progress_callback is not None:
         progress_callback(100)
     return keyframes
+
+
+def snap_cut_to_keyframe(
+    position: float, keyframes: list[float], duration: float,
+) -> Optional[float]:
+    """Choose the nearest interior keyframe; ties choose the earlier one.
+
+    A shared split boundary must be safe for either side to be kept. Project
+    edges cannot create a split, so they are excluded from the candidates.
+    """
+    if not keyframes or not math.isfinite(position) or duration <= 0:
+        return None
+    first = bisect.bisect_right(keyframes, 0.002)
+    last = bisect.bisect_left(keyframes, duration - 0.002)
+    index = bisect.bisect_left(keyframes, position, first, last)
+    candidates = keyframes[max(first, index - 1):min(last, index + 1)]
+    return min(candidates, key=lambda value: (abs(value - position), value), default=None)
 
 
 def snap_range_to_keyframes(
